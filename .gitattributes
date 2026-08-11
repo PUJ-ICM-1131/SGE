@@ -1,0 +1,4 @@
+# Scripts y checksums siempre con LF, incluso en checkouts Windows:
+# los .sh deben ejecutar en bash y los .sha256 se comparan byte a byte en CI.
+*.sh text eol=lf
+*.sha256 text eol=lf

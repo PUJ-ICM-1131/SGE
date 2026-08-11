@@ -1,0 +1,41 @@
+# Temporales / SO
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+/temp/
+
+# Android (aplica si el Paso 5 elige Kotlin nativo)
+*.iml
+.gradle/
+/local.properties
+/.idea/
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# Flutter (aplica si el Paso 5 elige Flutter)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+/build/
+
+# Node (si el backend termina siendo JS/TS)
+node_modules/
+
+# Python (si el backend termina siendo Python)
+__pycache__/
+*.pyc
+.venv/
+
+# Variables de entorno / secretos — nunca commitear
+.env
+.env.*
+*.keystore
+
+# Contexto local para Claude Code — no va al repo
+CLAUDE.md
+
+# Config local de Claude Code — no va al repo
+.claude/

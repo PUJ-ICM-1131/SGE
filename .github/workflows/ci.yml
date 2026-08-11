@@ -1,0 +1,67 @@
+# CI del proyecto.
+# Fase actual (solo docs):
+#   - valida que los diagramas Mermaid de docs/ compilen
+#   - valida los bloques PlantUML y que sus SVG commiteados estén al día
+#     (scripts/render-diagrams.sh --check)
+# Fase futura (cuando exista código en src/): agregar job Android — Gradle lint + tests
+# (stack: Kotlin + Jetpack Compose, ver ADR-001).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate-mermaid:
+    name: Validate Mermaid diagrams
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install mermaid-cli
+        run: npm install -g @mermaid-js/mermaid-cli
+
+      - name: Validate diagrams in docs/
+        run: |
+          # Chromium en runners ubuntu-24.04 necesita --no-sandbox (restricción AppArmor)
+          echo '{"args": ["--no-sandbox", "--disable-setuid-sandbox"]}' > /tmp/puppeteer.json
+          mkdir -p /tmp/mmd-out
+          status=0
+          shopt -s globstar nullglob
+          for f in docs/**/*.md; do
+            if grep -q '```mermaid' "$f"; then
+              echo "::group::$f"
+              if ! mmdc -p /tmp/puppeteer.json -i "$f" -o "/tmp/mmd-out/$(basename "$f")"; then
+                echo "::error file=$f::Diagrama Mermaid inválido"
+                status=1
+              fi
+              echo "::endgroup::"
+            fi
+          done
+          exit $status
+
+  validate-plantuml:
+    name: Validate PlantUML diagrams and SVG freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache PlantUML jar
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/plantuml
+          # Mantener sincronizado con PLANTUML_VERSION en scripts/render-diagrams.sh
+          key: plantuml-1.2026.6
+
+      - name: Check PlantUML diagrams
+        run: bash scripts/render-diagrams.sh --check
