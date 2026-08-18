@@ -67,7 +67,7 @@ El proyecto necesita un framework para construir la aplicación móvil Android. 
 | Backend | Firebase Auth + Firestore + FCM |
 | HTTP | Retrofit (Nominatim REST API) |
 | Imágenes | Coil o Glide |
-| Cámara | CameraX |
+| Cámara | CameraX (need to think)|
 | Sensores | Acelerómetro + Magnetómetro/Brújula |
 | Caché local | Room / SQLite |
 
