@@ -1,57 +1,57 @@
-# ADR-002: Persistencia — Room (caché local) + Firestore (fuente remota)
+# ADR-002: Base de datos local — Room (SQLite)
 
 | Campo | Valor |
 |---|---|
-| **Estado** | Aceptada (reemplaza versión anterior: Room-only) |
-| **Fecha** | 2026-08-11 |
-| **Decisores** | Equipo de desarrollo (4 personas) |
-| **Origen** | RNF-06 (sin pérdida de datos), RNF-07 (offline-first), RNF-08 (multi-usuario), requisitos del curso (backend de tercero) |
+| **Estado** | Aceptada |
+| **Fecha** | 2026-07-09 |
+| **Decisores** | Administrador del proyecto |
+| **Origen** | RNF-06 (sin pérdida de datos), RNF-07 (offline-first) |
 
 ## Contexto
 
-El proyecto pivotó de single-user/local-only a multi-usuario con backend. Los requisitos clave ahora son:
+La aplicación necesita una base de datos local que sea la fuente de verdad de todas las transacciones. Los requisitos clave son:
 
-- **Multi-usuario** (RNF-08): propietario y trabajadores comparten datos de la misma finca en tiempo real.
-- **Backend de tercero** (requisito del curso): Firebase (Auth + Firestore + Storage + FCM).
 - **Offline-first** (RNF-07): toda operación CRUD debe funcionar sin conexión.
-- **Sin pérdida de datos** (RNF-06): los registros deben persistir aunque falle la app o no haya red.
+- **Sin pérdida de datos** (RNF-06): los registros deben persistir aunque falle la app.
 - **Consultas con filtros** (RF-05): por fecha, categoría y actividad.
 - **Cálculo de balances** (RF-03): agregaciones por periodo y actividad.
-- **Fotos de animales** (RF-20): imágenes almacenadas en Firebase Storage.
+- **Modelo relacional simple** (6 entidades, ver diagrama de clases del Paso 4).
+
+Dado que el framework elegido es Kotlin (ADR-001), las opciones se limitan al ecosistema Android/JVM.
+
+## Opciones evaluadas
+
+### Opción A: Room (SQLite) — elegida
+- ORM oficial de Android (parte de Jetpack).
+- SQLite como motor: maduro, probado, sin servidor.
+- Soporte de migraciones, validación de esquema en compilación, integración con coroutines y Flow.
+- Consultas SQL reales: ideales para filtros complejos y agregaciones de balance.
+
+### Opción B: SQLDelight
+- Genera código Kotlin type-safe a partir de SQL.
+- Multiplataforma (KMP-ready).
+- **Contras:** curva de aprendizaje extra, menor documentación que Room, no aporta ventaja si no hay KMP.
+
+### Opción C: Realm (MongoDB)
+- Base de datos orientada a objetos con sync integrado.
+- **Contras:** modelo de licenciamiento complejo; sync nativo va a MongoDB Atlas (servicio de pago para sync real); overhead innecesario para un solo usuario sin sync remoto.
 
 ## Decisión
 
-**Room (SQLite) como caché local + Cloud Firestore como fuente de verdad remota + Firebase Storage para fotos.**
+**Room (SQLite).**
 
 ## Justificación
 
-1. **Firestore SDK tiene offline-first nativo:** Firestore mantiene una caché local automática. Cuando no hay red, las escrituras se encolan y se sincronizan al recuperar conexión. Esto satisface RNF-07 sin implementar sync manual.
-2. **Room sigue siendo valioso como caché estructurada:** para consultas complejas (balances con agrupación, filtros combinados), SQL es más expresivo que las queries de Firestore. Room sirve como caché local optimizada para lectura.
-3. **Firebase Storage para fotos:** las fotos de animales (UC-20) y capturas OCR (UC-09) se almacenan en Firebase Storage. Las URIs se guardan en Firestore/Room.
-4. **Firebase Auth maneja la autenticación:** reemplaza la autenticación local anterior.
-5. **FCM para notificaciones push:** integración natural con el ecosistema Firebase.
-
-## Arquitectura de datos
-
-```
-┌──────────────┐     ┌───────────────┐     ┌──────────────────┐
-│   UI Layer   │────▶│  Room (caché) │     │    Firestore     │
-│  (Compose)   │     │   SQLite      │◀───▶│  (fuente remota) │
-└──────────────┘     └───────────────┘     └──────────────────┘
-                                                     │
-                                           ┌─────────┴────────┐
-                                           │ Firebase Storage  │
-                                           │   (fotos)         │
-                                           └──────────────────┘
-```
-
-- **Escritura:** UI → Room (inmediato, sin bloqueo) → Firestore (asíncrono, con retry automático del SDK).
-- **Lectura:** UI ← Room (rápido, SQL) ← Firestore (sync en background vía listeners).
-- **Conflictos:** poco probables porque cada usuario crea transacciones nuevas (no editan las mismas). El propietario es el único que edita/elimina. Firestore resuelve conflictos por last-write-wins.
+1. **First-party:** Room es la solución oficial de Google para persistencia en Android. Máxima compatibilidad con el stack elegido (ADR-001).
+2. **SQL real:** las consultas de balance con agrupación por periodo y actividad (RF-03) y los filtros combinados del historial (RF-05) son naturales en SQL.
+3. **Validación en compilación:** Room verifica las queries SQL contra el esquema en tiempo de compilación — reduce errores en runtime.
+4. **Integración con Kotlin coroutines y Flow:** permite operaciones asíncronas y observación reactiva de datos (el balance se actualiza automáticamente al registrar una transacción).
+5. **Migraciones:** soporte nativo para evolucionar el esquema sin perder datos del usuario.
+6. **Sin overhead:** no introduce dependencias externas ni servicios de terceros.
 
 ## Consecuencias
 
-- Las entidades del dominio se mapean tanto a tablas Room (`@Entity`) como a documentos Firestore.
-- Los repositorios implementan el patrón "write-through": escriben en Room y Firestore; leen de Room (populada por listeners de Firestore).
+- Las entidades del dominio (Transaction, Category, User, etc.) se mapean a tablas Room con `@Entity`.
+- Los DAOs definen las queries de consulta, filtro y agregación.
 - El modelo de datos detallado se define en el Paso 6.
-- ADR-003 (anterior: backup a Google Drive) queda reemplazada por esta ADR: la sincronización es nativa de Firestore, no un backup periódico.
+- La estrategia de backup se define en ADR-003.
