@@ -1,6 +1,6 @@
 # Casos de Uso
 ### Sistema de Gestión Económica — Finca Ganadera
-*Versión 2 · 3 de agosto de 2026 — pivote multi-usuario: actores con generalización, 7 nuevos CU (UC-13 a UC-19), paquetes reorganizados*
+*Versión 3 · 11 de agosto de 2026 — GPS: inspecciones + animales geolocalizados; OCR on-device; Nominatim; UC-20/UC-21*
 
 ---
 
@@ -23,8 +23,6 @@ skinparam packageStyle rectangle
 actor "Usuario" as user
 actor "Propietario" as owner
 actor "Trabajador" as worker
-actor "API IA\nMultimodal" as api <<sistema>>
-
 owner --|> user
 worker --|> user
 
@@ -45,10 +43,12 @@ rectangle "Sistema de Gestión Económica (SGE)" {
     usecase "UC-06: Editar/eliminar\nregistro" as UC06
   }
 
-  package "Rutas y Localización (Must)" {
-    usecase "UC-15: Registrar ruta\nde entrega" as UC15
-    usecase "UC-16: Seguir ruta\nen tiempo real" as UC16
-    usecase "UC-17: Consultar\nhistorial de rutas" as UC17
+  package "Inspección y Localización (Must)" {
+    usecase "UC-15: Iniciar recorrido\nde inspección" as UC15
+    usecase "UC-16: Rastrear recorrido\nen tiempo real" as UC16
+    usecase "UC-17: Consultar historial\nde recorridos" as UC17
+    usecase "UC-20: Registrar animal\ncon foto y ubicación" as UC20
+    usecase "UC-21: Consultar mapa\nde animales" as UC21
   }
 
   package "Reportes (Should)" {
@@ -61,9 +61,9 @@ rectangle "Sistema de Gestión Económica (SGE)" {
     usecase "UC-19: Configurar\nrecordatorios" as UC19
   }
 
-  package "Captura por IA (Could)" {
+  package "Captura por OCR (Could)" {
     usecase "UC-09: Capturar foto\nde anotación" as UC09
-    usecase "UC-10: Extraer datos\ncon IA" as UC10
+    usecase "UC-10: Extraer texto\ncon OCR" as UC10
     usecase "UC-11: Corregir datos\nextraídos" as UC11
   }
 }
@@ -78,6 +78,8 @@ user --> UC09
 user --> UC15
 user --> UC16
 user --> UC17
+user --> UC20
+user --> UC21
 user --> UC18
 user --> UC19
 
@@ -88,9 +90,6 @@ owner --> UC06
 owner --> UC08
 owner --> UC12
 owner --> UC14
-
-' ── Actor secundario (sistema) ──
-UC10 --> api
 
 ' ── Include / Extend ──
 ' El hint .left.> mantiene UC-05 en la columna del paquete Must.
@@ -114,18 +113,18 @@ UC09 .left.> UC02 : <<extend>>
 |---|---|---|
 | **Usuario** | Generalización | Actor abstracto que agrupa la funcionalidad común a ambos roles. No se instancia directamente. |
 | **Propietario** | Primario (hereda de Usuario) | Dueño o administrador de la finca. Tiene acceso completo: finanzas, reportes, gestión de trabajadores y categorías. |
-| **Trabajador** | Primario (hereda de Usuario) | Empleado de campo. Puede registrar transacciones, consultar historial, rastrear rutas, gestionar contactos y configurar recordatorios. No accede a balance general, reportes, ni gestión de categorías/trabajadores. |
-| **API IA Multimodal** | Secundario (sistema) | Servicio externo que procesa imágenes de anotaciones manuscritas y devuelve datos estructurados. Invocado por UC-10. |
+| **Trabajador** | Primario (hereda de Usuario) | Empleado de campo. Puede registrar transacciones, consultar historial, rastrear recorridos, registrar animales, gestionar contactos y configurar recordatorios. No accede a balance general, reportes, ni gestión de categorías/trabajadores. |
+
+> **Nota:** ya no hay actor secundario "API IA Multimodal". La extracción de texto se hace con OCR on-device (ML Kit), sin actor externo. La API REST externa (Nominatim para geocoding) es invocada directamente por el sistema, no representa un actor en el diagrama.
 
 ### Relaciones clave
 
 | Relación | Tipo | Justificación |
 |---|---|---|
-| Propietario / Trabajador → Usuario | Generalización | Ambos roles comparten la funcionalidad base (registro, historial, rutas, contactos). La generalización evita duplicar asociaciones. |
+| Propietario / Trabajador → Usuario | Generalización | Ambos roles comparten la funcionalidad base (registro, historial, inspección, contactos). La generalización evita duplicar asociaciones. |
 | UC-06 → UC-05 | `<<include>>` | Para editar o eliminar, el usuario primero consulta el historial para localizar el registro |
-| UC-09 → UC-10 → UC-11 | `<<include>>` | Cadena obligatoria: capturar foto siempre desencadena extracción, y la extracción siempre pasa por corrección humana |
+| UC-09 → UC-10 → UC-11 | `<<include>>` | Cadena obligatoria: capturar foto siempre desencadena extracción OCR, y la extracción siempre pasa por corrección humana |
 | UC-09 → UC-01 / UC-02 | `<<extend>>` | La captura por foto es una vía alternativa (opcional) de registrar una transacción |
-| UC-10 → API IA | asociación | UC-10 requiere un actor externo (API multimodal) para procesar la imagen |
 
 ---
 
@@ -348,28 +347,29 @@ UC09 .left.> UC02 : <<extend>>
 
 ---
 
-### UC-10 — Extraer datos con IA
+### UC-10 — Extraer texto con OCR
 
 | Campo | Detalle |
 |---|---|
 | **ID** | UC-10 |
 | **HU origen** | HU-10 (RF-10 · Could) |
-| **Actores** | Usuario, API IA Multimodal |
-| **Precondición** | Se capturó una foto (UC-09); hay conexión a internet |
+| **Actor principal** | Usuario (Propietario o Trabajador) |
+| **Precondición** | Se capturó una foto (UC-09) |
 | **Postcondición** | Los campos del formulario de registro están prellenados con los datos extraídos |
 
 **Flujo principal:**
-1. El sistema envía la imagen a la API de IA multimodal.
-2. El sistema muestra un indicador de carga.
-3. La API responde con los datos extraídos (fecha, concepto/categoría, monto).
-4. El sistema prellena el formulario de registro con los datos extraídos.
-5. El sistema pasa el control a UC-11 para corrección humana.
+1. El sistema procesa la imagen con OCR on-device (Google ML Kit Text Recognition).
+2. El sistema muestra un indicador de carga breve (procesamiento local, sin latencia de red).
+3. El OCR devuelve el texto reconocido.
+4. El sistema intenta extraer fecha, concepto/categoría y monto del texto.
+5. El sistema prellena el formulario de registro con los datos extraídos.
+6. El sistema pasa el control a UC-11 para corrección humana.
 
 **Flujos alternativos:**
-- **3a.** La API no puede extraer datos confiables → el sistema informa al usuario y ofrece volver a tomar la foto o registrar manualmente.
-- **1a.** Sin conexión → el sistema informa que esta función requiere internet y ofrece guardar la foto para después o registrar manualmente.
+- **3a.** El OCR no puede reconocer texto legible → el sistema informa al usuario y ofrece volver a tomar la foto o registrar manualmente.
+- **4a.** El texto se reconoce pero no se pueden extraer campos estructurados → el sistema muestra el texto crudo y el usuario completa los campos manualmente.
 
-**Restricción técnica:** Se usa exclusivamente una API de un modelo multimodal existente. Sin entrenamiento ni fine-tuning propio (decisión D2).
+**Restricción técnica:** Se usa OCR on-device (Google ML Kit), gratuito y sin conexión (decisión D6). No se usa API multimodal — sin presupuesto para tokens.
 
 ---
 
@@ -466,7 +466,7 @@ UC09 .left.> UC02 : <<extend>>
 
 ---
 
-### UC-15 — Registrar ruta de entrega
+### UC-15 — Iniciar recorrido de inspección
 
 | Campo | Detalle |
 |---|---|
@@ -474,66 +474,118 @@ UC09 .left.> UC02 : <<extend>>
 | **Prioridad** | Must |
 | **Actor principal** | Usuario (Propietario o Trabajador) |
 | **Precondición** | El usuario está autenticado; el dispositivo tiene GPS habilitado |
-| **Postcondición** | Se crea un registro de ruta con los puntos GPS capturados |
+| **Postcondición** | Se crea un registro de recorrido con los puntos GPS capturados |
 
 **Flujo principal:**
-1. El usuario selecciona "Nueva ruta de entrega".
+1. El usuario selecciona "Nuevo recorrido de inspección".
 2. El sistema solicita permisos de ubicación (si no se han concedido).
-3. El sistema muestra el mapa con la posición actual y un botón "Iniciar ruta".
-4. El usuario inicia la ruta.
+3. El sistema muestra el mapa con la posición actual y un botón "Iniciar recorrido".
+4. El usuario inicia el recorrido.
 5. El sistema comienza a registrar puntos GPS periódicamente (→ UC-16).
-6. El usuario selecciona "Finalizar ruta" al completar la entrega.
-7. El sistema calcula la distancia total y guarda la ruta.
-8. El sistema muestra un resumen (distancia, duración, mapa del recorrido).
+6. Durante el recorrido, el usuario puede registrar animales con foto y ubicación (→ UC-20).
+7. El usuario selecciona "Finalizar recorrido" al completar la inspección.
+8. El sistema calcula la distancia total y guarda el recorrido.
+9. El sistema muestra un resumen (distancia, duración, mapa del recorrido, animales registrados).
 
 **Flujos alternativos:**
 - **2a.** El usuario deniega permisos de ubicación → el sistema informa que la funcionalidad requiere GPS y regresa.
-- **6a.** La app se cierra inesperadamente → al reabrirse, ofrece retomar la ruta activa o descartarla.
-- **Sensor proximidad:** durante el tracking (pasos 5-6), si el sensor de proximidad detecta que el teléfono está en bolsillo, el sistema mantiene el GPS activo pero apaga la pantalla para ahorrar batería.
+- **7a.** La app se cierra inesperadamente → al reabrirse, ofrece retomar el recorrido activo o descartarlo.
+- **Sensor proximidad:** durante el tracking (pasos 5-7), si el sensor de proximidad detecta que el teléfono está en bolsillo, el sistema mantiene el GPS activo pero apaga la pantalla para ahorrar batería.
 
 ---
 
-### UC-16 — Seguir ruta en tiempo real
+### UC-16 — Rastrear recorrido en tiempo real
 
 | Campo | Detalle |
 |---|---|
 | **ID** | UC-16 |
 | **Prioridad** | Must |
 | **Actor principal** | Usuario (Propietario o Trabajador) |
-| **Precondición** | Hay una ruta activa (UC-15 en progreso) |
+| **Precondición** | Hay un recorrido activo (UC-15 en progreso) |
 | **Postcondición** | La posición se actualiza en tiempo real sobre el mapa |
 
 **Flujo principal:**
-1. Mientras la ruta está activa, el sistema muestra el mapa con la posición actual del usuario.
+1. Mientras el recorrido está activo, el sistema muestra el mapa con la posición actual del usuario.
 2. El mapa se actualiza en tiempo real conforme el usuario se desplaza.
 3. Se dibujan los puntos GPS registrados como una línea sobre el mapa.
 4. El sistema muestra métricas en vivo: distancia acumulada, tiempo transcurrido.
+5. Los animales registrados durante el recorrido (UC-20) aparecen como pins en el mapa.
 
 **Flujos alternativos:**
-- **1a.** El propietario abre la app y consulta la ruta activa de un trabajador → ve la posición del trabajador en tiempo real en el mapa (requiere conexión).
+- **1a.** El propietario abre la app y consulta el recorrido activo de un trabajador → ve la posición del trabajador en tiempo real en el mapa (requiere conexión).
 - **2a.** Se pierde la señal GPS → el sistema muestra indicador "Sin señal GPS" y retoma el tracking al recuperarla.
 
 ---
 
-### UC-17 — Consultar historial de rutas
+### UC-17 — Consultar historial de recorridos
 
 | Campo | Detalle |
 |---|---|
 | **ID** | UC-17 |
 | **Prioridad** | Should |
 | **Actor principal** | Usuario (Propietario o Trabajador) |
-| **Precondición** | El usuario está autenticado; existen rutas registradas |
-| **Postcondición** | Se muestra la lista de rutas y/o el detalle de una ruta seleccionada |
+| **Precondición** | El usuario está autenticado; existen recorridos registrados |
+| **Postcondición** | Se muestra la lista de recorridos y/o el detalle de uno seleccionado |
 
 **Flujo principal:**
-1. El usuario abre la sección "Historial de rutas".
-2. El sistema muestra las rutas ordenadas por fecha (más reciente primero), con fecha, distancia y duración.
-3. El usuario selecciona una ruta.
-4. El sistema muestra el recorrido completo sobre el mapa con los puntos GPS.
+1. El usuario abre la sección "Historial de recorridos".
+2. El sistema muestra los recorridos ordenados por fecha (más reciente primero), con fecha, distancia y duración.
+3. El usuario selecciona un recorrido.
+4. El sistema muestra el trazado completo sobre el mapa con los puntos GPS y los animales registrados durante ese recorrido.
 
 **Flujos alternativos:**
-- **2a.** No hay rutas registradas → el sistema muestra mensaje "No hay rutas registradas".
+- **2a.** No hay recorridos registrados → el sistema muestra mensaje "No hay recorridos registrados".
 - **2b.** El usuario filtra por rango de fechas → el sistema actualiza la lista.
+
+---
+
+### UC-20 — Registrar animal con foto y ubicación
+
+| Campo | Detalle |
+|---|---|
+| **ID** | UC-20 |
+| **Prioridad** | Must |
+| **Actor principal** | Usuario (Propietario o Trabajador) |
+| **Precondición** | El usuario está autenticado; el dispositivo tiene cámara y GPS |
+| **Postcondición** | Se crea un registro de animal con foto, datos y ubicación GPS almacenados |
+
+**Flujo principal:**
+1. El usuario selecciona "Registrar animal" (desde la pantalla principal o durante un recorrido de inspección).
+2. El sistema abre la cámara del dispositivo.
+3. El usuario toma la foto del animal.
+4. El sistema captura automáticamente las coordenadas GPS actuales.
+5. El sistema invoca la API Nominatim para obtener el nombre del lugar a partir de las coordenadas (geocoding inverso).
+6. El sistema muestra formulario: nombre/identificador del animal, notas (opcional), ubicación (autocompletada con nombre del lugar).
+7. El usuario completa y confirma.
+8. El sistema persiste el registro localmente y lo sincroniza con Firestore.
+
+**Flujos alternativos:**
+- **2a.** El usuario selecciona una foto existente de la galería en vez de tomar una nueva.
+- **5a.** Sin conexión → el geocoding se omite; se guardan solo las coordenadas. El nombre del lugar se resuelve cuando haya conexión.
+- **4a.** GPS no disponible → el sistema permite registrar sin ubicación, con advertencia.
+
+---
+
+### UC-21 — Consultar mapa de animales
+
+| Campo | Detalle |
+|---|---|
+| **ID** | UC-21 |
+| **Prioridad** | Must |
+| **Actor principal** | Usuario (Propietario o Trabajador) |
+| **Precondición** | El usuario está autenticado; existen animales registrados con ubicación |
+| **Postcondición** | Se muestra el mapa con los pins de animales registrados |
+
+**Flujo principal:**
+1. El usuario abre la sección "Mapa de animales".
+2. El sistema muestra Google Maps centrado en la ubicación de la finca.
+3. Los animales registrados aparecen como pins en sus últimas ubicaciones conocidas.
+4. El usuario toca un pin → el sistema muestra miniatura de la foto, nombre, fecha y notas.
+5. El usuario puede tocar "Ver detalle" → se abre la ficha completa del animal.
+
+**Flujos alternativos:**
+- **3a.** No hay animales registrados → el sistema muestra el mapa vacío con mensaje "No hay animales registrados. Usa 'Registrar animal' para agregar uno."
+- **3b.** El usuario filtra por fecha o nombre → el sistema actualiza los pins visibles.
 
 ---
 
@@ -596,6 +648,10 @@ Los sensores del dispositivo no son casos de uso independientes; se integran com
 | **Acelerómetro** | Gesto de agitación (shake) para abrir el formulario de registro rápido de transacción | UC-01, UC-02 (flujo alternativo 1a) |
 | **Proximidad** | Auto-pausa de pantalla cuando el teléfono está en bolsillo durante tracking GPS activo; mantiene GPS y registro de puntos | UC-15, UC-16 (comportamiento del sistema) |
 
+### API REST externa — Nominatim (geocoding inverso)
+
+La API REST externa del curso es **Nominatim (OpenStreetMap)**. Se invoca en UC-20 para convertir coordenadas GPS a nombres de lugar legibles (ej: lat/lng → "Vereda San Juan, Municipio de Chía"). No es un actor en el diagrama porque es una llamada técnica del sistema, no una interacción de negocio.
+
 ---
 
 ## Trazabilidad HU → UC
@@ -611,7 +667,7 @@ Los sensores del dispositivo no son casos de uso independientes; se integran com
 | HU-07 | UC-07 | Must | Usuario |
 | HU-08 | UC-08 | Should | Propietario |
 | HU-09 | UC-09 | Could | Usuario |
-| HU-10 | UC-10 | Could | Usuario + API IA |
+| HU-10 | UC-10 | Could | Usuario (OCR on-device) |
 | HU-11 | UC-11 | Could | Usuario |
 | HU-12 | UC-12 | Could | Propietario |
 | *(nuevo)* | UC-13 | Must | Usuario |
@@ -619,6 +675,8 @@ Los sensores del dispositivo no son casos de uso independientes; se integran com
 | *(nuevo)* | UC-15 | Must | Usuario |
 | *(nuevo)* | UC-16 | Must | Usuario |
 | *(nuevo)* | UC-17 | Should | Usuario |
+| *(nuevo)* | UC-20 | Must | Usuario |
+| *(nuevo)* | UC-21 | Must | Usuario |
 | *(nuevo)* | UC-18 | Should | Usuario |
 | *(nuevo)* | UC-19 | Should | Usuario |
 

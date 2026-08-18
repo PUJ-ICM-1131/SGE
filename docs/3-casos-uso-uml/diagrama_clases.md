@@ -1,6 +1,6 @@
 # Diagrama de Clases (Dominio)
 ### Sistema de Gestión Económica — Finca Ganadera
-*Versión 3 · 3 de agosto de 2026 — pivote multi-usuario: entidades Farm, DeliveryRoute, RoutePoint, Contact, Reminder; User con roles; enumeraciones nuevas*
+*Versión 4 · 11 de agosto de 2026 — InspectionRoute→InspectionRoute, AnimalRecord, OCR on-device, Nominatim*
 
 ---
 
@@ -84,7 +84,7 @@ classDiagram
 
     %% ── Rutas y localización ──
 
-    class DeliveryRoute {
+    class InspectionRoute {
         +String id
         +DateTime startTime
         +DateTime endTime [0..1]
@@ -105,6 +105,19 @@ classDiagram
         IN_PROGRESS
         COMPLETED
         CANCELLED
+    }
+
+    %% ── Registro de animales ──
+
+    class AnimalRecord {
+        +String id
+        +String name
+        +String photoUri
+        +Double latitude
+        +Double longitude
+        +String locationName [0..1]
+        +String notes [0..1]
+        +DateTime recordedAt
     }
 
     %% ── Contactos ──
@@ -185,9 +198,14 @@ classDiagram
     User ..> UserRole : rol
 
     %% ── Relaciones: rutas ──
-    User "1" --> "*" DeliveryRoute : realiza
-    DeliveryRoute "1" --> "1..*" RoutePoint : compuesta por
-    DeliveryRoute ..> RouteStatus : estado
+    User "1" --> "*" InspectionRoute : realiza
+    InspectionRoute "1" --> "1..*" RoutePoint : compuesta por
+    InspectionRoute ..> RouteStatus : estado
+
+    %% ── Relaciones: registro de animales ──
+    User "1" --> "*" AnimalRecord : registra
+    Farm "1" --> "*" AnimalRecord : tiene
+    InspectionRoute "1" --> "0..*" AnimalRecord : documenta
 
     %% ── Relaciones: contactos ──
     Farm "1" --> "*" Contact : asocia
@@ -273,8 +291,8 @@ Agrupa las categorías por línea de negocio.
 | CATTLE | Ganado | Venta de terneros, novillas, vacas, toros |
 | GENERAL | Sin actividad específica | Egresos generales (salarios, servicios, impuestos, etc.) |
 
-### DeliveryRoute *(nueva)*
-Representa un recorrido de entrega de leche rastreado por GPS. El usuario inicia la ruta, el sistema registra puntos periódicamente, y al finalizar se calcula la distancia total.
+### InspectionRoute *(renombrada de DeliveryRoute)*
+Representa un recorrido de inspección de campo rastreado por GPS. El usuario inicia el recorrido, el sistema registra puntos periódicamente, y al finalizar se calcula la distancia total. Durante el recorrido se pueden registrar animales (AnimalRecord).
 
 | Atributo | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
@@ -298,6 +316,22 @@ Punto GPS individual capturado durante una ruta de entrega. La secuencia ordenad
 | order | Int | Sí | Orden secuencial dentro de la ruta |
 
 **Trazabilidad:** UC-15, UC-16
+
+### AnimalRecord *(nueva)*
+Registro de un animal con foto y ubicación GPS. Permite documentar dónde se vio cada animal, en qué potrero se fotografió, y cuándo. Se puede crear durante un recorrido de inspección o independientemente. El campo `locationName` se resuelve con la API Nominatim (geocoding inverso).
+
+| Atributo | Tipo | Obligatorio | Descripción |
+|---|---|---|---|
+| id | String (UUID) | Sí | Identificador único |
+| name | String | Sí | Nombre o identificador del animal (ej. "Vaca 12", "Ternero Pinto") |
+| photoUri | String | Sí | URI de la foto del animal |
+| latitude | Double | Sí | Latitud donde se tomó la foto |
+| longitude | Double | Sí | Longitud donde se tomó la foto |
+| locationName | String | No | Nombre del lugar resuelto por Nominatim (ej. "Vereda San Juan"). Puede estar vacío si no hay conexión al momento del registro |
+| notes | String | No | Notas adicionales (estado de salud, observaciones) |
+| recordedAt | DateTime | Sí | Fecha/hora del registro |
+
+**Trazabilidad:** UC-20, UC-21
 
 ### Contact *(nueva)*
 Contacto relevante para la operación de la finca: proveedores, veterinarios, compradores. Puede importarse desde los contactos del dispositivo.
@@ -366,7 +400,11 @@ Resultado de la extracción de datos por IA a partir de una foto.
 
 4. **Category es fija, no creada por el usuario:** las categorías se precargan con los datos de la sección 8 del documento de requisitos. El propietario solo puede activar/desactivar las reservadas.
 
-5. **DeliveryRoute → RoutePoint (composición):** una ruta se compone de una secuencia ordenada de puntos GPS. Si se elimina una ruta, se eliminan sus puntos. La multiplicidad `1..*` refleja que una ruta finalizada tiene al menos un punto.
+5. **InspectionRoute → RoutePoint (composición):** un recorrido se compone de una secuencia ordenada de puntos GPS. Si se elimina un recorrido, se eliminan sus puntos. La multiplicidad `1..*` refleja que un recorrido finalizado tiene al menos un punto.
+
+6a. **AnimalRecord pertenece a Farm y opcionalmente a InspectionRoute:** un animal registrado durante un recorrido de inspección queda vinculado a ese recorrido; pero también se puede registrar independientemente (sin recorrido activo).
+
+6b. **AnimalRecord.locationName se resuelve con Nominatim:** la API REST externa (geocoding inverso) convierte coordenadas a nombre de lugar. Se invoca al registrar; si no hay conexión, queda null y se resuelve al sincronizar.
 
 6. **Contact pertenece a Farm, no a User:** los contactos son de la finca, no personales. Todos los usuarios de la finca ven el mismo directorio.
 
@@ -374,4 +412,6 @@ Resultado de la extracción de datos por IA a partir de una foto.
 
 8. **PhotoCapture y ExtractionResult siguen siendo opcionales (Could):** no son necesarias para el MVP. Se implementan si el proyecto llega al módulo de IA.
 
-9. **photoUri en Transaction:** permite adjuntar una foto directamente a una transacción (recibo, comprobante) sin pasar por el flujo de extracción IA. Cubre el uso de cámara/galería como requisito del curso.
+9. **photoUri en Transaction:** permite adjuntar una foto directamente a una transacción (recibo, comprobante) sin pasar por el flujo de extracción OCR. Cubre el uso de cámara/galería como requisito del curso.
+
+10. **OCR on-device en lugar de API multimodal:** PhotoCapture y ExtractionResult se mantienen como entidades, pero la extracción la hace ML Kit (on-device, gratuito), no una API externa. Decisión D6.
