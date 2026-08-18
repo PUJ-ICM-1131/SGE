@@ -54,18 +54,19 @@ Regla: UI → Domain → Data (nunca al revés)
 
 ### Capa Domain (Lógica de negocio)
 - **Modelos de dominio:** `Transaction`, `Category`, `User`, `Farm`, `InspectionRoute`, `AnimalRecord`, etc. Son clases Kotlin simples (data classes), sin anotaciones de Room ni Firestore.
-- **Use Cases (opcionales):** solo se crean cuando la lógica es lo suficientemente compleja para justificar una clase propia. Ejemplo: `CalculateBalanceUseCase` (agrega por periodo y actividad). Para operaciones CRUD simples, el ViewModel puede invocar directamente al Repository.
+- **Interfaces de Repository:** Domain define el contrato (interfaz) de cada repositorio. Data lo implementa. Esto aplica inversión de dependencias (DIP): Domain no depende de Data, sino que Data depende de Domain.
+- **Use Cases (opcionales):** solo se crean cuando la lógica es lo suficientemente compleja para justificar una clase propia. Ejemplo: `CalculateBalanceUseCase` (agrega por periodo y actividad). Para operaciones CRUD simples, el ViewModel puede invocar directamente la interfaz del Repository.
 - **Sin dependencia de Android:** esta capa es Kotlin puro, testeable sin emulador.
 
 ### Capa Data (Persistencia + Sincronización)
+- **Repository implementations:** clases concretas que implementan las interfaces definidas en Domain. Aplican el patrón write-through: escriben en Room y Firestore; leen de Room (populada por listeners de Firestore). Ver ADR-002.
 - **Room Entities:** clases anotadas con `@Entity` que mapean a tablas SQLite (caché local para consultas complejas y offline-first).
 - **DAOs:** interfaces con `@Dao` que definen las queries SQL.
-- **Repositories:** clases que abstraen el acceso a datos. Implementan el patrón write-through: escriben en Room y Firestore; leen de Room (populada por listeners de Firestore). Ver ADR-002.
 - **Firebase Auth:** autenticación de usuarios (email/password).
 - **Firestore:** base de datos remota, fuente de verdad. Sincronización offline nativa.
 - **FCM Service:** recepción de notificaciones push para recordatorios.
 - **Retrofit:** cliente HTTP para la API REST de Nominatim (geocoding inverso).
-- **Coil/Glide:** carga y caché de imágenes (fotos de animales, recibos).
+- **Coil:** carga y caché de imágenes (fotos de animales, recibos).
 
 ## Convención sobre indirección
 
@@ -73,8 +74,8 @@ Para mantener la simplicidad:
 
 | Situación | Enfoque |
 |---|---|
-| CRUD simple (crear, leer, actualizar, eliminar transacción) | ViewModel → Repository → DAO + Firestore. Sin UseCase intermedio. |
-| Lógica de negocio no trivial (calcular balance con desglose, validar reglas de categorías) | ViewModel → UseCase → Repository. |
+| CRUD simple (crear, leer, actualizar, eliminar transacción) | ViewModel → Repository (interfaz) → Impl → DAO + Firestore. Sin UseCase intermedio. |
+| Lógica de negocio no trivial (calcular balance con desglose, validar reglas de categorías) | ViewModel → UseCase → Repository (interfaz) → Impl. |
 | Mapeo entre Room Entity y modelo de dominio | Solo si los modelos divergen. Mientras sean iguales, se usa la misma clase (con anotaciones Room). Si divergen, se introduce un mapper puntual. |
 
 ## Diagrama de dependencias
