@@ -84,34 +84,36 @@ graph TD
     subgraph "UI Layer"
         S[Compose Screens]
         VM[ViewModels]
+        IMG[Coil / Glide]
     end
-
     subgraph "Domain Layer"
         UC[Use Cases]
         M[Domain Models]
+        RepoI[Repository - interfaz]
     end
-
     subgraph "Data Layer"
-        R[Repositories]
+        RepoImpl[Repository - impl]
         DAO[Room DAOs]
         DB[(Room / SQLite)]
         FA[Firebase Auth]
         FS[Firestore]
         FCM[FCM Service]
         RET[Retrofit / Nominatim]
-        IMG[Coil / Glide]
     end
 
     S --> VM
+    S --> IMG
     VM --> UC
-    VM --> R
-    UC --> R
     UC --> M
-    R --> DAO
-    R --> FS
+    UC --> RepoI
+    RepoImpl -.->|implementa| RepoI
+    RepoImpl --> DAO
+    RepoImpl --> FS
+    RepoImpl --> FA
+    RepoImpl --> FCM
+    RepoImpl -.->|geocoding inverso| RET
     DAO --> DB
     FS --> DB
-    RET -.-> |geocoding inverso| R
 ```
 
 ## Stack tecnológico
