@@ -62,7 +62,7 @@ El proyecto necesita un framework para construir la aplicación móvil Android. 
 |---|---|
 | Lenguaje + IDE | Kotlin + Android Studio |
 | UI | Jetpack Compose + Material 3 |
-| Arquitectura | MVVM + Navigation Compose + ViewModel |
+| Arquitectura | MVVM + Navigaton3 + ViewModel |
 | Mapas y GPS | Google Maps SDK + Fused Location Provider |
 | Backend | Firebase Auth + Firestore + FCM |
 | HTTP | Retrofit (Nominatim REST API) |
