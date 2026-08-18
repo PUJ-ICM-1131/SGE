@@ -490,7 +490,7 @@ UC09 .left.> UC02 : <<extend>>
 **Flujos alternativos:**
 - **2a.** El usuario deniega permisos de ubicación → el sistema informa que la funcionalidad requiere GPS y regresa.
 - **7a.** La app se cierra inesperadamente → al reabrirse, ofrece retomar el recorrido activo o descartarlo.
-- **Sensor proximidad:** durante el tracking (pasos 5-7), si el sensor de proximidad detecta que el teléfono está en bolsillo, el sistema mantiene el GPS activo pero apaga la pantalla para ahorrar batería.
+- **Magnetómetro/Brújula:** durante el tracking (pasos 5-7), el mapa muestra un indicador de orientación (heading) del dispositivo, útil para que el usuario sepa hacia dónde camina sin mirar la pantalla constantemente.
 
 ---
 
@@ -646,7 +646,7 @@ Los sensores del dispositivo no son casos de uso independientes; se integran com
 | Sensor | Integración | UCs afectados |
 |---|---|---|
 | **Acelerómetro** | Gesto de agitación (shake) para abrir el formulario de registro rápido de transacción | UC-01, UC-02 (flujo alternativo 1a) |
-| **Proximidad** | Auto-pausa de pantalla cuando el teléfono está en bolsillo durante tracking GPS activo; mantiene GPS y registro de puntos | UC-15, UC-16 (comportamiento del sistema) |
+| **Magnetómetro/Brújula** | Indicador de orientación (heading) en el mapa durante recorridos de inspección; muestra hacia dónde camina el usuario | UC-15, UC-16 (comportamiento del sistema) |
 
 ### API REST externa — Nominatim (geocoding inverso)
 

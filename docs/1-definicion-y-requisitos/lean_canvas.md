@@ -79,7 +79,7 @@ Los números del veterinario, del proveedor de concentrado, del comprador de lec
 | S5 | Captura de foto de anotación manuscrita → extracción de texto con OCR on-device (ML Kit) | P1 — Cuaderno de papel | Cámara/galería |
 | S6 | Directorio de contactos de la finca importado desde el dispositivo | P4 — Contactos dispersos | Contactos del dispositivo |
 | S7 | Recordatorios con notificaciones push (vacunación, pagos, ordeño) | P2 — Comunicación verbal | Notificaciones |
-| S8 | Registro rápido por agitación del dispositivo (shake) + auto-pausa en bolsillo | — Conveniencia en campo | 2 sensores (acelerómetro + proximidad) |
+| S8 | Registro rápido por agitación del dispositivo (shake) + brújula de orientación en inspecciones | — Conveniencia en campo | 2 sensores (acelerómetro + magnetómetro) |
 
 ### 5. Métricas clave
 
@@ -111,7 +111,7 @@ Los números del veterinario, del proveedor de concentrado, del comprador de lec
 | Cámara y galería | Foto de anotación manuscrita (OCR); foto de animales con GPS; adjuntar fotos a transacciones |
 | Almacenamiento | Room/SQLite como caché local (offline-first) + Firestore como fuente remota |
 | Contactos | Directorio de contactos de la finca, importación desde contactos del dispositivo (UC-18) |
-| 2 sensores ≠ luz ambiental | **Acelerómetro:** shake-to-register (gesto de agitación para abrir registro rápido). **Proximidad:** auto-pausa de pantalla cuando el teléfono está en bolsillo durante tracking GPS |
+| 2 sensores ≠ luz ambiental | **Acelerómetro:** shake-to-register (gesto de agitación para abrir registro rápido). **Magnetómetro/Brújula:** indicador de orientación en el mapa durante recorridos de inspección |
 | GPS + mapas + seguimiento en tiempo real | Recorridos de inspección con rastreo GPS en tiempo real; registro de animales con foto y ubicación; visualización en Google Maps (UC-15, UC-16, UC-20, UC-21) |
 | Manejo de rutas | Registro, seguimiento en tiempo real y consulta de historial de recorridos de inspección |
 | Notificaciones | Recordatorios locales (vacunación, pagos) + push notifications vía Firebase Cloud Messaging (UC-19) |

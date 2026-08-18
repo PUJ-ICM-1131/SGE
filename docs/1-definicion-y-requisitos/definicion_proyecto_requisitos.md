@@ -41,7 +41,7 @@ Proveer al propietario de la finca y a sus trabajadores una herramienta digital 
 - Registro de animales con foto geolocalizada y visualización en mapa
 - Directorio de contactos de la finca (importable desde el dispositivo)
 - Recordatorios con notificaciones locales y push
-- Uso de sensores del dispositivo (acelerómetro y proximidad)
+- Uso de sensores del dispositivo (acelerómetro y magnetómetro/brújula)
 - (Stretch, condicionado a tiempo disponible) Captura de foto de anotaciones manuscritas con extracción de texto vía OCR on-device
 
 ### 4.2 Fuera del alcance (por ahora)
@@ -117,7 +117,7 @@ Priorizados con la técnica MoSCoW (Must / Should / Could).
 | RNF-06 | Confiabilidad | Ningún registro se pierde aunque falle la app (Room como caché local) |
 | RNF-07 | Offline-first | Debe permitir registrar datos sin conexión y sincronizar con Firestore cuando haya señal |
 | RNF-08 | Multi-usuario | Roles diferenciados: propietario (acceso completo) y trabajador (acceso operativo) |
-| RNF-09 | Hardware | Usar acelerómetro (shake-to-register) y sensor de proximidad (auto-dim durante GPS) |
+| RNF-09 | Hardware | Usar acelerómetro (shake-to-register) y magnetómetro/brújula (orientación durante inspecciones de campo) |
 | RNF-10 | GPS | Rastreo de posición en tiempo real durante inspecciones; geolocalización de fotos de animales |
 
 ## 8. Categorías Económicas (detalle de RF-04)
