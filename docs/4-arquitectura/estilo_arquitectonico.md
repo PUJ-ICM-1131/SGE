@@ -84,7 +84,7 @@ graph TD
     subgraph "UI Layer"
         S[Compose Screens]
         VM[ViewModels]
-        IMG[Coil / Glide]
+        IMG[Coil]
     end
     subgraph "Domain Layer"
         UC[Use Cases]
