@@ -1,224 +1,242 @@
-# Diagrama de Clases (Dominio)
+
 ### Sistema de Gestión Económica — Finca Ganadera
-*Versión 4 · 11 de agosto de 2026 — InspectionRoute→InspectionRoute, AnimalRecord, OCR on-device, Nominatim*
+*Versión 5 · 17 de agosto de 2026 — DeliveryRoute→InspectionRoute, AnimalRecord, User–Farm muchos-a-muchos, Farm→Transaction directa, OCR on-device, Nominatim*
 
 ---
 
 > **Alcance:** Este es un diagrama de clases de **análisis** (modelo de dominio / mundo del problema), no de diseño. Representa las entidades del negocio y sus relaciones. Las clases técnicas (repositorios, ViewModels, etc.) se definen en la arquitectura.
 
-## Diagrama
-
 ```mermaid
 classDiagram
-    direction LR
+direction LR
 
-    %% ── Entidad raíz ──
+%% ── Entidad raíz ──
 
-    class Farm {
-        +String id
-        +String name
-        +Double latitude
-        +Double longitude
-        +String inviteCode [0..1]
-        +DateTime createdAt
-    }
+class Farm {
+    +String id
+    +String name
+    +Double latitude
+    +Double longitude
+    +String inviteCode [0..1]
+    +DateTime createdAt
+    
+}
 
-    %% ── Usuarios ──
+%% ── Usuarios ──
 
-    class User {
-        +String id
-        +String name
-        +String email
-        +UserRole role
-        +Boolean isActive
-        +DateTime createdAt
-    }
+class User {
+    +String id
+    +String name
+    +String email
+    +UserRole role
+    +Boolean isActive
+    +DateTime createdAt
+}
 
-    class UserRole {
-        <<enumeration>>
-        OWNER
-        WORKER
-    }
+class UserRole {
+    <<enumeration>>
+    OWNER
+    WORKER
+}
 
-    %% ── Módulo financiero ──
+%% ── Módulo financiero ──
 
-    class Transaction {
-        +String id
-        +TransactionType type
-        +LocalDate date
-        +Decimal amount
-        +String note [0..1]
-        +String paymentMethod [0..1]
-        +String photoUri [0..1]
-        +DateTime createdAt
-        +DateTime updatedAt
-    }
+class Transaction {
+    +String id
+    +TransactionType type
+    +LocalDate date
+    +Decimal amount
+    +String note [0..1]
+    +String paymentMethod [0..1]
+    +String photoUri [0..1]
+    +DateTime createdAt
+    +DateTime updatedAt
+}
 
-    class Category {
-        +String id
-        +String name
-        +CategoryType type
-        +ActivityGroup activityGroup
-        +Boolean isReserved
-        +Boolean isActive
-    }
+class Category {
+    +String id
+    +String name
+    +CategoryType type
+    +ActivityGroup activityGroup
+    +Boolean isReserved
+    +Boolean isActive
+}
 
-    class ActivityGroup {
-        <<enumeration>>
-        DAIRY
-        CATTLE
-        GENERAL
-    }
+class ActivityGroup {
+    <<enumeration>>
+    DAIRY
+    CATTLE
+    GENERAL
+}
 
-    class TransactionType {
-        <<enumeration>>
-        INCOME
-        EXPENSE
-    }
+class TransactionType {
+    <<enumeration>>
+    INCOME
+    EXPENSE
+}
 
-    class CategoryType {
-        <<enumeration>>
-        INCOME
-        EXPENSE
-    }
+class CategoryType {
+    <<enumeration>>
+    INCOME
+    EXPENSE
+}
 
-    %% ── Rutas y localización ──
+%% ── Rutas y localización ──
 
-    class InspectionRoute {
-        +String id
-        +DateTime startTime
-        +DateTime endTime [0..1]
-        +Double distanceKm [0..1]
-        +RouteStatus status
-    }
+class InspectionRoute {
+    +String id
+    +DateTime startTime
+    +DateTime endTime [0..1]
+    +Double distanceKm [0..1]
+    +RouteStatus status
+}
 
-    class RoutePoint {
-        +String id
-        +Double latitude
-        +Double longitude
-        +DateTime timestamp
-        +Int order
-    }
+class RoutePoint {
+    +String id
+    +Double latitude
+    +Double longitude
+    +DateTime timestamp
+    +Int order
+}
 
-    class RouteStatus {
-        <<enumeration>>
-        IN_PROGRESS
-        COMPLETED
-        CANCELLED
-    }
+class RouteStatus {
+    <<enumeration>>
+    IN_PROGRESS
+    COMPLETED
+    CANCELLED
+}
 
-    %% ── Registro de animales ──
+%% ── Registro de animales ──
 
-    class AnimalRecord {
-        +String id
-        +String name
-        +String photoUri
-        +Double latitude
-        +Double longitude
-        +String locationName [0..1]
-        +String notes [0..1]
-        +DateTime recordedAt
-    }
+class AnimalRecord {
+    +String id
+    +String name
+    +String photoUri
+    +Double latitude
+    +Double longitude
+    +String locationName [0..1]
+    +String notes [0..1]
+    +DateTime recordedAt
+}
 
-    %% ── Contactos ──
+%% ── Contactos ──
 
-    class Contact {
-        +String id
-        +String name
-        +String phone [0..1]
-        +String email [0..1]
-        +ContactType contactType
-    }
+class Contact {
+    +String id
+    +String name
+    +String phone [0..1]
+    +String email [0..1]
+    +ContactType contactType
+}
 
-    class ContactType {
-        <<enumeration>>
-        SUPPLIER
-        VETERINARIAN
-        BUYER
-        OTHER
-    }
+class ContactType {
+    <<enumeration>>
+    SUPPLIER
+    VETERINARIAN
+    BUYER
+    OTHER
+}
 
-    %% ── Recordatorios ──
+%% ── Recordatorios ──
 
-    class Reminder {
-        +String id
-        +String title
-        +String description [0..1]
-        +DateTime scheduledAt
-        +RepeatInterval repeat [0..1]
-        +Boolean active
-    }
+class Reminder {
+    +String id
+    +String title
+    +String description [0..1]
+    +DateTime scheduledAt
+    +RepeatInterval repeat [0..1]
+    +Boolean active
+}
 
-    class RepeatInterval {
-        <<enumeration>>
-        ONCE
-        DAILY
-        WEEKLY
-        MONTHLY
-    }
+class RepeatInterval {
+    <<enumeration>>
+    ONCE
+    DAILY
+    WEEKLY
+    MONTHLY
+}
 
-    %% ── Captura por IA (Could) ──
+%% ── Captura por OCR (Could) ──
 
-    class PhotoCapture {
-        +String id
-        +String imageUri
-        +ExtractionStatus status
-        +DateTime capturedAt
-    }
+class PhotoCapture {
+    +String id
+    +String imageUri
+    +ExtractionStatus status
+    +DateTime capturedAt
+}
 
-    class ExtractionResult {
-        +String id
-        +String rawDate [0..1]
-        +String rawConcept [0..1]
-        +String rawAmount [0..1]
-        +String suggestedCategoryId [0..1]
-        +Decimal parsedAmount [0..1]
-        +LocalDate parsedDate [0..1]
-        +DateTime processedAt
-    }
+class ExtractionResult {
+    +String id
+    +String rawDate [0..1]
+    +String rawConcept [0..1]
+    +String rawAmount [0..1]
+    +String suggestedCategoryId [0..1]
+    +Decimal parsedAmount [0..1]
+    +LocalDate parsedDate [0..1]
+    +DateTime processedAt
+}
 
-    class ExtractionStatus {
-        <<enumeration>>
-        PENDING
-        SUCCESS
-        FAILED
-    }
+class ExtractionStatus {
+    <<enumeration>>
+    PENDING
+    SUCCESS
+    FAILED
+}
 
-    %% ── Relaciones: Farm como raíz ──
-    Farm "1" --> "*" User : tiene
-    Farm "1" --> "*" Category : define
+%% ══════════════════════════════════════════
+%% RELACIONES PRINCIPALES
+%% ══════════════════════════════════════════
 
-    %% ── Relaciones: módulo financiero ──
-    User "1" --> "*" Transaction : crea
-    Transaction "*" --> "1" Category : clasificada en
-    Transaction "*" --> "0..1" Contact : asociada a
-    Category "*" --> "1" ActivityGroup : pertenece a
-    Category ..> CategoryType : tipo
-    Transaction ..> TransactionType : tipo
-    User ..> UserRole : rol
+%% ── Usuarios y fincas ──
 
-    %% ── Relaciones: rutas ──
-    User "1" --> "*" InspectionRoute : realiza
-    InspectionRoute "1" --> "1..*" RoutePoint : compuesta por
-    InspectionRoute ..> RouteStatus : estado
+User "*" --> "*" Farm : pertenece a
+User ..> UserRole : tiene rol
 
-    %% ── Relaciones: registro de animales ──
-    User "1" --> "*" AnimalRecord : registra
-    Farm "1" --> "*" AnimalRecord : tiene
-    InspectionRoute "1" --> "0..*" AnimalRecord : documenta
+%% ── Finanzas ──
 
-    %% ── Relaciones: contactos ──
-    Farm "1" --> "*" Contact : asocia
-    Contact ..> ContactType : tipo
+Farm "1" --> "*" Transaction : registra
+User "1" --> "*" Transaction : crea
 
-    %% ── Relaciones: recordatorios ──
-    User "1" --> "*" Reminder : programa
-    Reminder ..> RepeatInterval : repetición
+Farm "1" --> "*" Category : define
+Transaction "*" --> "1" Category : clasificada en
+Transaction "*" --> "0..1" Contact : asociada a
 
-    %% ── Relaciones: captura por IA ──
-    Transaction "1" --> "0..1" PhotoCapture : adjunta
-    PhotoCapture "1" --> "0..1" ExtractionResult : produce
-    PhotoCapture ..> ExtractionStatus : estado
+Transaction ..> TransactionType : tipo
+Category ..> CategoryType : tipo
+Category ..> ActivityGroup : actividad
+
+%% ── Rutas de inspección ──
+
+Farm "1" --> "*" InspectionRoute : posee
+User "1" --> "*" InspectionRoute : realiza
+
+InspectionRoute "1" --> "1..*" RoutePoint : compuesta por
+InspectionRoute ..> RouteStatus : estado
+
+%% ── Registro de animales ──
+
+User "1" --> "*" AnimalRecord : registra
+Farm "1" --> "*" AnimalRecord : tiene
+InspectionRoute "1" --> "0..*" AnimalRecord : documenta
+
+%% ── Contactos ──
+
+Farm "1" --> "*" Contact : registra
+Contact ..> ContactType : tipo
+
+%% ── Recordatorios ──
+
+Farm "1" --> "*" Reminder : contiene
+User "1" --> "*" Reminder : programa
+
+Reminder ..> RepeatInterval : repetición
+
+%% ── Captura por OCR ──
+
+Transaction "1" --> "0..1" PhotoCapture : adjunta
+
+PhotoCapture "1" --> "0..1" ExtractionResult : produce
+PhotoCapture ..> ExtractionStatus : estado
 ```
 
 ## Descripción de las clases
@@ -252,7 +270,7 @@ Usuario del sistema. Puede ser propietario (acceso completo) o trabajador (acces
 **Trazabilidad:** UC-07 (login), UC-13 (registro), UC-14 (gestión)
 
 ### Transaction
-Entidad central del módulo financiero. Representa un movimiento de dinero (ingreso o egreso) de la finca.
+Entidad central del módulo financiero. Representa un movimiento de dinero (ingreso o egreso) perteneciente directamente a una finca. El usuario que la registra se conserva como responsable de creación, pero la finca no se determina a través de la categoría.
 
 | Atributo | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
@@ -269,7 +287,7 @@ Entidad central del módulo financiero. Representa un movimiento de dinero (ingr
 **Trazabilidad:** UC-01, UC-02, UC-06
 
 ### Category
-Clasificación fija de las transacciones, agrupada por actividad económica. Las categorías no se crean por el usuario; vienen preconfiguradas. Las reservadas pueden activarse o desactivarse por el propietario.
+Clasificación de las transacciones de una finca, agrupada por actividad económica. Las categorías no se crean libremente por los usuarios; vienen preconfiguradas. Las reservadas pueden activarse o desactivarse por el propietario.
 
 | Atributo | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
@@ -305,7 +323,7 @@ Representa un recorrido de inspección de campo rastreado por GPS. El usuario in
 **Trazabilidad:** UC-15, UC-16, UC-17
 
 ### RoutePoint *(nueva)*
-Punto GPS individual capturado durante una ruta de entrega. La secuencia ordenada de puntos forma el trazado de la ruta sobre el mapa.
+Punto GPS individual capturado durante un recorrido de inspección. La secuencia ordenada de puntos forma el trazado de la ruta sobre el mapa.
 
 | Atributo | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
@@ -361,7 +379,7 @@ Recordatorio programado que genera una notificación local (y opcionalmente push
 **Trazabilidad:** UC-19
 
 ### PhotoCapture (Could)
-Foto tomada de una anotación manuscrita. Solo aplica si se implementa el módulo de captura por IA.
+Foto tomada de una anotación manuscrita. Solo aplica si se implementa el módulo de captura por OCR on-device.
 
 | Atributo | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
@@ -373,7 +391,7 @@ Foto tomada de una anotación manuscrita. Solo aplica si se implementa el módul
 **Trazabilidad:** UC-09
 
 ### ExtractionResult (Could)
-Resultado de la extracción de datos por IA a partir de una foto.
+Resultado de la extracción de datos por OCR a partir de una foto.
 
 | Atributo | Tipo | Obligatorio | Descripción |
 |---|---|---|---|
@@ -392,26 +410,32 @@ Resultado de la extracción de datos por IA a partir de una foto.
 
 ## Decisiones de modelado
 
-1. **Farm como entidad raíz:** todos los datos (transacciones, categorías, contactos, rutas) pertenecen a una finca. Esto soporta el modelo multi-usuario donde propietario y trabajadores comparten los datos de la misma finca.
+1. **Farm como entidad raíz:** todos los datos operativos y financieros de una finca (transacciones, categorías, contactos, rutas y recordatorios) están asociados a una finca. Esto permite que varios usuarios compartan la información de la misma finca.
 
-2. **User con rol en lugar de subclases:** se usa un discriminador `role` (OWNER/WORKER) en lugar de dos subclases. Ambos comparten los mismos atributos; la diferencia es de permisos, no de estructura.
+2. **User ↔ Farm es muchos-a-muchos:** un usuario puede pertenecer a una o varias fincas y una finca puede tener varios usuarios. La pertenencia determina el contexto en el que el usuario puede operar.
 
-3. **Transaction no es abstracta:** se usa un solo tipo con discriminador `type` (INCOME/EXPENSE). Ambos comparten exactamente los mismos atributos.
+3. **User con rol en lugar de subclases:** se usa un discriminador `role` (OWNER/WORKER) en lugar de dos subclases. Ambos comparten los mismos atributos; la diferencia es de permisos, no de estructura.
 
-4. **Category es fija, no creada por el usuario:** las categorías se precargan con los datos de la sección 8 del documento de requisitos. El propietario solo puede activar/desactivar las reservadas.
+4. **Transaction pertenece directamente a Farm:** la finca es la entidad propietaria/contexto de la transacción. `Category` solamente clasifica la transacción; no se utiliza para determinar a qué finca pertenece.
 
-5. **InspectionRoute → RoutePoint (composición):** un recorrido se compone de una secuencia ordenada de puntos GPS. Si se elimina un recorrido, se eliminan sus puntos. La multiplicidad `1..*` refleja que un recorrido finalizado tiene al menos un punto.
+5. **User crea Transaction:** además de pertenecer a una finca, el usuario que registra una transacción queda asociado como creador. Esto permite distinguir entre el propietario de los datos y quién realizó el registro.
 
-6a. **AnimalRecord pertenece a Farm y opcionalmente a InspectionRoute:** un animal registrado durante un recorrido de inspección queda vinculado a ese recorrido; pero también se puede registrar independientemente (sin recorrido activo).
+6. **Transaction no es abstracta:** se usa un solo tipo con discriminador `type` (INCOME/EXPENSE). Ambos comparten exactamente los mismos atributos.
 
-6b. **AnimalRecord.locationName se resuelve con Nominatim:** la API REST externa (geocoding inverso) convierte coordenadas a nombre de lugar. Se invoca al registrar; si no hay conexión, queda null y se resuelve al sincronizar.
+7. **Category es fija, no creada libremente por el usuario:** las categorías se precargan con los datos de la sección 8 del documento de requisitos. El propietario solo puede activar/desactivar las reservadas dentro de su finca.
 
-6. **Contact pertenece a Farm, no a User:** los contactos son de la finca, no personales. Todos los usuarios de la finca ven el mismo directorio.
+8. **InspectionRoute → RoutePoint (composición):** un recorrido se compone de una secuencia ordenada de puntos GPS. Si se elimina un recorrido, se eliminan sus puntos. La multiplicidad `1..*` refleja que un recorrido finalizado tiene al menos un punto.
 
-7. **Reminder pertenece a User:** los recordatorios son personales. Cada usuario configura los suyos.
+9. **AnimalRecord pertenece a Farm y opcionalmente a InspectionRoute:** un animal registrado durante un recorrido de inspección queda vinculado a ese recorrido; pero también se puede registrar independientemente (sin recorrido activo).
 
-8. **PhotoCapture y ExtractionResult siguen siendo opcionales (Could):** no son necesarias para el MVP. Se implementan si el proyecto llega al módulo de IA.
+10. **AnimalRecord.locationName se resuelve con Nominatim:** la API REST externa (geocoding inverso) convierte coordenadas a nombre de lugar. Se invoca al registrar; si no hay conexión, queda null y se resuelve al sincronizar.
 
-9. **photoUri en Transaction:** permite adjuntar una foto directamente a una transacción (recibo, comprobante) sin pasar por el flujo de extracción OCR. Cubre el uso de cámara/galería como requisito del curso.
+11. **Contact pertenece a Farm, no a User:** los contactos son de la finca, no personales. Todos los usuarios de la finca ven el mismo directorio.
 
-10. **OCR on-device en lugar de API multimodal:** PhotoCapture y ExtractionResult se mantienen como entidades, pero la extracción la hace ML Kit (on-device, gratuito), no una API externa. Decisión D6.
+12. **Reminder pertenece a Farm y es programado por User:** el recordatorio queda dentro del contexto de una finca, mientras que el usuario indica quién lo creó/programó.
+
+13. **PhotoCapture y ExtractionResult siguen siendo opcionales (Could):** no son necesarias para el MVP. Se implementan si el proyecto llega al módulo de OCR.
+
+14. **photoUri en Transaction:** permite adjuntar una foto directamente a una transacción (recibo, comprobante) sin pasar por el flujo de extracción OCR. Cubre el uso de cámara/galería como requisito del curso.
+
+15. **OCR on-device en lugar de API multimodal:** PhotoCapture y ExtractionResult se mantienen como entidades, pero la extracción la hace ML Kit (on-device, gratuito), no una API externa. Decisión D6.

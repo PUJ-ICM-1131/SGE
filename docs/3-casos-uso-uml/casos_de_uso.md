@@ -6,7 +6,7 @@
 
 ## Diagrama de Casos de Uso
 
-![Diagrama de casos de uso UML](assets/diagrama-casos-uso.svg)
+![Diagrama de casos de uso UML](assets/HU_diagram.png)
 
 <details>
 <summary>Fuente PlantUML</summary>
