@@ -36,6 +36,8 @@ __pycache__/
 
 # Contexto local para Claude Code — no va al repo
 CLAUDE.md
+AGENTS.md
+SKILL.md
 
 # Config local de Claude Code — no va al repo
 .claude/
