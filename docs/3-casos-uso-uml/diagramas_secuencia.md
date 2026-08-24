@@ -1,285 +1,516 @@
 # Diagramas de Secuencia
 ### Sistema de Gestión Económica — Finca Ganadera
-*Versión 2 · 10 de julio de 2026*
+*Versión 4 · 20 de agosto de 2026*
 
 ---
 
-> **Nota:** Versión alineada con la arquitectura definida en el Paso 5 (`docs/4-arquitectura/`): MVVM + Clean Architecture ligera (estilo_arquitectonico.md) y stack Kotlin/Compose/Room (ADR-001, ADR-002). Los participantes son los componentes reales de cada capa. Según la convención de indirección: los flujos CRUD van `ViewModel → Repository` directo; la lógica no trivial (balance, exportación) pasa por un Use Case. Los nombres de métodos están en inglés (convención de código); las descripciones, en español.
->
-> **Cambios de la v2:** se eliminó la "Cola de Sincronización" de SD-01 — contradecía ADR-003, que define un modelo **local-only**: la BD local es la fuente de verdad y no hay sincronización por transacción, solo backup periódico de la BD completa a Google Drive.
+> Diagramas alineados con MVVM + Clean Architecture ligera, Room, Firebase y
+> los casos de uso vigentes. Cada sección explica el propósito del flujo y las
+> responsabilidades principales de sus participantes.
 
-## SD-01 — Registrar transacción (ingreso o egreso)
+## SD-01 — Registrar transacción y sincronizar
 
-Cubre UC-01 y UC-02 (HU-01, HU-02).
+Cubre UC-01 y UC-02 (RF-01, RF-02, RNF-07).
+
+Representa el registro de un ingreso o egreso desde la carga de categorías
+hasta su almacenamiento y sincronización. La transacción se guarda primero en
+Room para que la operación funcione sin conexión; el repositorio usa el SDK de
+Firestore para enviarla cuando la red está disponible.
+
+> **Nota:** el estado `PENDING` indica que el dato ya existe localmente, pero la
+> confirmación remota todavía no se ha recibido. Al llegar el snapshot de
+> Firestore, el registro cambia a `SYNCED`.
 
 ```mermaid
 sequenceDiagram
-    actor Admin as Administrador
-    participant Screen as RegisterScreen
+    actor Usuario
+    participant UI as RegisterScreen
     participant VM as RegisterViewModel
-    participant CatRepo as CategoryRepository
-    participant TxRepo as TransactionRepository
-    participant DB as Room / SQLite
-
-    Admin->>Screen: Selecciona "Registrar ingreso/egreso"
-    Screen->>VM: loadForm(type)
-    VM->>CatRepo: getActiveCategories(type)
-    CatRepo->>DB: SELECT categorías activas
-    DB-->>CatRepo: categories
-    CatRepo-->>VM: categories
-    VM-->>Screen: UiState(fecha = hoy, categorías)
-    Admin->>Screen: Completa campos y confirma
-
-    Screen->>VM: onSave(formData)
-    VM->>VM: validate() — campos obligatorios
-
-    alt Validación falla
-        VM-->>Screen: UiState.error("El monto es obligatorio")
-        Screen-->>Admin: Muestra error
-    else Validación exitosa
-        VM->>TxRepo: save(transaction)
-        TxRepo->>DB: INSERT
-        DB-->>TxRepo: ok
-        TxRepo-->>VM: saved
-        VM-->>Screen: UiState.success
-        Screen-->>Admin: "Transacción registrada"
-    end
-
-    Note over DB: La BD local es la fuente de verdad (ADR-003).<br/>El flujo es idéntico con o sin conexión (RNF-07).<br/>El backup a Google Drive lo hace WorkManager<br/>en segundo plano cuando hay conexión.
-```
-
----
-
-## SD-02 — Consultar balance general con comparación de periodos
-
-Cubre UC-03 (HU-03). El cálculo del balance es lógica no trivial → pasa por `CalculateBalanceUseCase` (convención del estilo arquitectónico).
-
-```mermaid
-sequenceDiagram
-    actor Admin as Administrador
-    participant Screen as BalanceScreen
-    participant VM as BalanceViewModel
-    participant UC as CalculateBalanceUseCase
     participant Repo as TransactionRepository
+    participant Data as Room + Firestore SDK
 
-    Admin->>Screen: Abre pantalla de balance
-    Screen->>VM: loadBalance(currentMonth)
-    VM->>UC: execute(currentMonth)
-    UC->>Repo: getTransactions(currentMonth)
-    Repo-->>UC: transactions
-    UC->>UC: aggregate(income, expenses, net)
-    UC-->>VM: Balance
-    VM-->>Screen: UiState(balance)
-    Screen-->>Admin: Muestra balance del mes
-
-    Admin->>Screen: Selecciona "Comparar con mes anterior"
-    Screen->>VM: compare(currentMonth, previousMonth)
-    VM->>UC: execute(currentMonth, previousMonth)
-    UC->>Repo: getTransactions(previousMonth)
-    Repo-->>UC: previousTransactions
-    UC->>UC: aggregate ambos periodos + variación
-    UC-->>VM: BalanceComparison
-    VM-->>Screen: UiState(comparación)
-    Screen-->>Admin: Muestra ambos periodos lado a lado
-
-    Admin->>Screen: Selecciona "Desglose por actividad"
-    Screen->>VM: breakdownByActivity(period)
-    VM->>UC: executeBreakdown(period)
-    UC->>UC: groupByActivity(transactions)
-    UC-->>VM: ActivityBreakdown
-    VM-->>Screen: UiState(desglose)
-    Screen-->>Admin: Muestra subtotales (Lechería, Ganado, General)
-```
-
----
-
-## SD-03 — Editar una transacción
-
-Cubre UC-06 vía UC-05 (HU-06, HU-05). CRUD simple → `ViewModel → Repository` sin Use Case.
-
-```mermaid
-sequenceDiagram
-    actor Admin as Administrador
-    participant Hist as HistoryScreen
-    participant Edit as EditTransactionScreen
-    participant VM as EditTransactionViewModel
-    participant Repo as TransactionRepository
-
-    Admin->>Hist: Selecciona una transacción
-    Admin->>Hist: Elige "Editar"
-    Hist->>Edit: navigate(transactionId)
-    Edit->>VM: load(transactionId)
-    VM->>Repo: getById(transactionId)
-    Repo-->>VM: transaction
-    VM-->>Edit: UiState(datos precargados)
-    Edit-->>Admin: Muestra formulario con datos
-
-    Admin->>Edit: Modifica campos y confirma
-    Edit->>VM: onSave(transactionId, formData)
-    VM->>VM: validate() — campos obligatorios
-
-    alt Validación falla
-        VM-->>Edit: UiState.error
-        Edit-->>Admin: Muestra error
-    else Validación exitosa
-        VM->>Repo: update(transaction)
-        Repo-->>VM: updated
-        VM-->>Edit: UiState.success
-        Edit-->>Admin: "Transacción actualizada"
-    end
-
-    Note over Repo: El balance no se recalcula manualmente:<br/>BalanceScreen observa la BD vía Flow (ADR-002)<br/>y se actualiza de forma reactiva.
-```
-
----
-
-## SD-04 — Eliminar una transacción
-
-Cubre UC-06 vía UC-05 (HU-06). CRUD simple → `ViewModel → Repository` sin Use Case.
-
-```mermaid
-sequenceDiagram
-    actor Admin as Administrador
-    participant Hist as HistoryScreen
-    participant Dialog as ConfirmDialog
-    participant VM as HistoryViewModel
-    participant Repo as TransactionRepository
-
-    Admin->>Hist: Selecciona una transacción
-    Admin->>Hist: Elige "Eliminar"
-    Hist->>Dialog: show("¿Eliminar esta transacción?")
-    Dialog-->>Admin: Muestra diálogo
-
-    alt Administrador confirma
-        Admin->>Dialog: Confirma
-        Dialog->>VM: onDeleteConfirmed(transactionId)
-        VM->>Repo: delete(transactionId)
-        Repo-->>VM: deleted
-        VM-->>Hist: UiState actualizado
-        Hist-->>Admin: "Transacción eliminada"
-    else Administrador cancela
-        Admin->>Dialog: Cancela
-        Dialog-->>Hist: Sin cambios
-    end
-```
-
----
-
-## SD-05 — Captura por foto → extracción IA → corrección → registro
-
-Cubre UC-09 → UC-10 → UC-11 (HU-09, HU-10, HU-11). Solo aplica si se implementa el épico de IA (Could). La cámara se maneja con CameraX (ADR-001); la llamada a la API multimodal, con el componente AI Client del C4 nivel 3.
-
-```mermaid
-sequenceDiagram
-    actor Admin as Administrador
-    participant Screen as CaptureScreen
-    participant Cam as CameraX
-    participant VM as CaptureViewModel
-    participant AI as AiClient
-    participant API as API IA Multimodal
-    participant Repo as TransactionRepository
-
-    Admin->>Screen: Selecciona "Registrar desde foto"
-    Screen->>Cam: openCamera()
-    Admin->>Cam: Toma foto de anotación
-    Cam-->>Screen: preview(image)
-    Screen-->>Admin: Muestra foto con "Usar" / "Volver a tomar"
-
-    alt Volver a tomar
-        Admin->>Screen: "Volver a tomar"
-        Screen->>Cam: openCamera()
-    else Usar foto
-        Admin->>Screen: "Usar foto"
-
-        alt Sin conexión
-            Screen-->>Admin: "Esta función requiere internet"
-            Note over Screen: Ofrece guardar la foto<br/>o registrar manualmente
-        else Con conexión
-            Screen->>VM: extractData(image)
-            VM->>AI: extract(image)
-            AI->>API: POST imagen (HTTPS)
-            Note over Screen: Indicador de carga (RNF-03)
-            API-->>AI: JSON(fecha, concepto, monto)
-            AI-->>VM: ExtractionResult
-
-            alt Extracción fallida
-                VM-->>Screen: UiState.error("No se pudo leer la anotación")
-                Screen-->>Admin: Ofrece retomar foto o registro manual
-            else Extracción exitosa
-                VM-->>Screen: UiState(formulario prellenado + foto de referencia)
-                Screen-->>Admin: Muestra formulario + foto
-
-                Admin->>Screen: Revisa, corrige si es necesario, confirma
-                Screen->>VM: onSave(formData)
-                VM->>VM: validate() — mismas reglas que UC-01/UC-02
-                VM->>Repo: save(transaction)
-                Repo-->>VM: saved
-                VM-->>Screen: UiState.success
-                Screen-->>Admin: "Transacción registrada"
-            end
+    Usuario->>UI: Selecciona ingreso o egreso
+    UI->>VM: loadForm(type)
+    VM->>Repo: getActiveCategories(type, farmId)
+    Repo->>Data: Consultar categorías en Room
+    Data-->>Repo: categories
+    Repo-->>VM: categories
+    Usuario->>UI: Completa datos y confirma
+    UI->>VM: save(formData)
+    VM->>VM: validate(formData)
+    alt Datos inválidos
+        VM-->>UI: UiState.error
+        UI-->>Usuario: Muestra campos por corregir
+    else Datos válidos
+        VM->>Repo: create(transaction, membership)
+        Repo->>Data: INSERT Room con estado PENDING
+        Repo->>Data: set() mediante Firestore SDK
+        Repo-->>VM: Guardado local iniciado
+        VM-->>UI: UiState.success(pendingSync)
+        alt Confirmación remota
+            Data-->>Repo: Snapshot confirmado
+            Repo->>Data: UPDATE Room a SYNCED
+        else Sin conexión
+            Note over Repo,Data: El SDK conserva la escritura pendiente<br/>y reintenta al recuperar conexión
         end
     end
 ```
 
 ---
 
-## SD-06 — Exportar reporte
+## SD-02 — Consultar balance y comparar periodos
 
-Cubre UC-08 (HU-08). La generación del archivo es lógica no trivial → pasa por `ExportReportUseCase`.
+Cubre UC-03 (RF-03).
+
+Muestra cómo el propietario consulta el balance de la finca, compara dos
+periodos o solicita un desglose por actividad. El `CalculateBalanceUseCase`
+concentra los cálculos para mantenerlos separados de la interfaz.
+
+> **Nota:** el repositorio consulta la proyección local de Room, lo que permite
+> mostrar resultados incluso cuando el dispositivo no tiene conexión.
 
 ```mermaid
 sequenceDiagram
-    actor Admin as Administrador
-    participant Screen as BalanceScreen / HistoryScreen
-    participant VM as ReportViewModel
-    participant UC as ExportReportUseCase
+    actor Propietario
+    participant UI as BalanceScreen
+    participant VM as BalanceViewModel
+    participant UC as CalculateBalanceUseCase
     participant Repo as TransactionRepository
-    participant OS as Android Share Sheet
 
-    Admin->>Screen: Selecciona "Exportar"
-    Screen-->>Admin: Muestra opciones de formato (PDF / Excel)
-    Admin->>Screen: Elige formato
-
-    Screen->>VM: onExport(format, activeFilters)
-    VM->>UC: execute(activeFilters, format)
-    UC->>Repo: getTransactions(activeFilters)
-    Repo-->>UC: transactions
-
-    alt Sin datos
-        UC-->>VM: EmptyDataError
-        VM-->>Screen: UiState.error
-        Screen-->>Admin: "No hay datos para exportar"
-    else Con datos
-        UC->>UC: generateFile(transactions, format)
-        UC-->>VM: file(bytes, fileName)
-        VM->>OS: share(file) — Intent
-        OS-->>Admin: Opciones del sistema (compartir, guardar, etc.)
+    Propietario->>UI: Abre balance
+    UI->>VM: loadBalance(currentPeriod, farmId)
+    VM->>UC: calculate(currentPeriod, farmId)
+    UC->>Repo: getByPeriod(currentPeriod, farmId)
+    Note over Repo: Consulta la proyección local de Room
+    Repo-->>UC: currentTransactions
+    UC->>UC: Calcular ingresos, egresos y neto
+    UC-->>VM: Balance
+    VM-->>UI: UiState(balance)
+    alt Comparar periodos
+        Propietario->>UI: Selecciona periodo anterior
+        UI->>VM: compare(currentPeriod, previousPeriod)
+        VM->>UC: compare(currentPeriod, previousPeriod, farmId)
+        UC->>Repo: getByPeriods(periods, farmId)
+        Repo-->>UC: transactionsByPeriod
+        UC-->>VM: BalanceComparison
+        VM-->>UI: UiState(comparison)
+    else Desglosar por actividad
+        Propietario->>UI: Selecciona desglose
+        UI->>VM: breakdown(period, farmId)
+        VM->>UC: calculateByActivity(period, farmId)
+        UC->>Repo: getTotalsByActivity(period, farmId)
+        Repo-->>UC: activityTotals
+        UC-->>VM: ActivityBreakdown
+        VM-->>UI: UiState(breakdown)
     end
 ```
 
 ---
 
-## Resumen de cobertura
+## SD-03 — Editar o eliminar una transacción
 
-| Diagrama | Casos de uso | Historias de usuario | Prioridad |
-|---|---|---|---|
-| SD-01 | UC-01, UC-02 | HU-01, HU-02 | Must |
-| SD-02 | UC-03 | HU-03 | Must |
-| SD-03 | UC-05, UC-06 | HU-05, HU-06 | Must |
-| SD-04 | UC-05, UC-06 | HU-05, HU-06 | Must |
-| SD-05 | UC-09, UC-10, UC-11 | HU-09, HU-10, HU-11 | Could |
-| SD-06 | UC-08 | HU-08 | Should |
+Cubre UC-05 y UC-06 (RF-05, RF-06).
 
-**Nota:** UC-04 (Gestionar categorías) y UC-07 (Autenticarse) no tienen diagrama de secuencia dedicado porque sus flujos son lineales y quedan suficientemente cubiertos en las especificaciones de casos de uso. UC-12 (Reportes visuales) es análogo a SD-02 (consulta de datos + renderizado).
+Describe las dos operaciones disponibles desde el historial: editar una
+transacción o eliminarla después de confirmar la acción. En ambos casos, el
+repositorio actualiza primero la información local y coordina el cambio remoto.
 
-## Mapeo participantes → arquitectura (Paso 5)
+> **Nota:** la eliminación requiere confirmación para evitar pérdidas por una
+> selección accidental. La lista se actualiza después de reconciliar los datos.
 
-| Participante | Capa | Referencia |
-|---|---|---|
-| `*Screen`, `ConfirmDialog` | UI (Compose) | estilo_arquitectonico.md — Capa UI |
-| `*ViewModel` | UI (estado vía StateFlow) | estilo_arquitectonico.md — Capa UI |
-| `CalculateBalanceUseCase`, `ExportReportUseCase` | Domain | Convención: lógica no trivial → Use Case |
-| `TransactionRepository`, `CategoryRepository` | Data | estilo_arquitectonico.md — Capa Data |
-| `Room / SQLite` | Data | ADR-002 |
-| `AiClient` | Data | C4 nivel 3 — componente AI Client (Could) |
-| `CameraX`, `Android Share Sheet` | Plataforma Android | ADR-001 |
+```mermaid
+sequenceDiagram
+    actor Propietario
+    participant UI as HistoryScreen
+    participant VM as HistoryViewModel
+    participant Repo as TransactionRepository
+    participant Data as Room + Firestore SDK
+
+    Propietario->>UI: Selecciona una transacción
+    UI->>VM: loadTransaction(id, farmId)
+    VM->>Repo: getById(id, farmId)
+    Repo->>Data: SELECT en Room
+    Data-->>Repo: transaction
+    Repo-->>VM: transaction
+    alt Editar
+        Propietario->>UI: Modifica y confirma
+        UI->>VM: update(id, formData)
+        VM->>VM: validate(formData)
+        VM->>Repo: update(transaction)
+        Repo->>Data: UPDATE Room a PENDING y Firestore
+    else Eliminar
+        Propietario->>UI: Selecciona eliminar
+        UI-->>Propietario: Solicita confirmación
+        alt Confirma
+            Propietario->>UI: Confirmar
+            UI->>VM: delete(id)
+            VM->>Repo: delete(id, farmId)
+            Repo->>Data: DELETE lógico/local y remoto
+        else Cancela
+            UI-->>Propietario: Mantiene la transacción
+        end
+    end
+    opt Operación enviada
+        Data-->>Repo: Snapshot remoto actualizado
+        Repo->>Data: Reconciliar proyección local
+        Repo-->>VM: Resultado
+        VM-->>UI: Lista actualizada
+    end
+```
+
+---
+
+## SD-04 — Registrarse y crear o unirse a una finca
+
+Cubre UC-13 y parte de UC-14 (RF-13, RF-14).
+
+Representa el registro de una cuenta y las dos formas de obtener acceso a una
+finca: crear una nueva como propietario o unirse como trabajador mediante un
+código de invitación.
+
+> **Nota:** `FarmMembership` relaciona al usuario con una finca y almacena el
+> rol que tiene dentro de ella. La invitación se valida por existencia,
+> vigencia y estado antes de crear la membresía.
+
+```mermaid
+sequenceDiagram
+    actor Usuario
+    participant UI as RegisterScreen
+    participant VM as RegisterViewModel
+    participant Auth as Firebase Auth
+    participant Repo as MembershipRepository
+
+    Usuario->>UI: Completa nombre, email y contraseña
+    UI->>VM: register(credentials)
+    VM->>Auth: createUserWithEmailAndPassword()
+    alt Credenciales inválidas o email existente
+        Auth-->>VM: Error de registro
+        VM-->>UI: Muestra error
+    else Cuenta creada
+        Auth-->>VM: uid
+        VM-->>UI: Solicita crear o unirse a finca
+        alt Crear finca
+            Usuario->>UI: Ingresa datos de la finca
+            UI->>VM: createFarm(farmData)
+            VM->>Repo: createFarmAndMembership(uid, OWNER)
+            Note over Repo: Transacción Firestore:<br/>Farm + FarmMembership
+        else Unirse con código
+            Usuario->>UI: Ingresa código
+            UI->>VM: joinFarm(code)
+            VM->>Repo: validateInvitation(code, now)
+            alt Código inexistente, vencido o revocado
+                Repo-->>VM: InvitationError
+                VM-->>UI: Muestra error
+            else Código válido
+                Repo-->>VM: farmId
+                VM->>Repo: createMembership(uid, farmId, WORKER)
+            end
+        end
+        Repo-->>VM: Membership activa
+        VM->>Repo: cacheActiveFarmContext()
+        VM-->>UI: Navegar a inicio
+    end
+```
+
+---
+
+## SD-05 — Recorrido de inspección con GPS y brújula
+
+Cubre UC-15, UC-16 y UC-17 (RF-15, RF-16, RF-17).
+
+Muestra el ciclo completo de una inspección: validación del GPS, creación del
+recorrido, captura periódica de puntos, visualización de la orientación y cierre
+con el cálculo de distancia y duración.
+
+> **Nota:** el GPS proporciona la posición y el magnetómetro proporciona el
+> rumbo de la brújula. Si la señal GPS se pierde, la aplicación informa al
+> usuario y continúa cuando vuelve a estar disponible.
+
+```mermaid
+sequenceDiagram
+    actor Usuario
+    participant UI as InspectionScreen
+    participant VM as InspectionViewModel
+    participant Sensors as GPS + Magnetómetro
+    participant Repo as InspectionRepository
+
+    Usuario->>UI: Selecciona nuevo recorrido
+    UI->>VM: prepareInspection()
+    VM->>Sensors: Verificar permiso y GPS
+    alt Permiso denegado o GPS apagado
+        Sensors-->>VM: Ubicación no disponible
+        VM-->>UI: Solicita permiso o activar GPS
+    else Ubicación disponible
+        Sensors-->>VM: Posición inicial
+        VM-->>UI: Muestra mapa y botón Iniciar
+        Usuario->>UI: Inicia recorrido
+        UI->>VM: startInspection()
+        VM->>Repo: createRoute(startTime, userId, farmId)
+        Repo-->>VM: routeId
+        VM->>Sensors: startLocationAndHeadingUpdates()
+        loop Mientras el recorrido esté activo
+            Sensors-->>VM: LocationPoint
+            VM->>Repo: appendPoint(routeId, point)
+            Sensors-->>VM: headingDegrees
+            VM-->>UI: Actualizar trazado, distancia y brújula
+            opt Se pierde la señal GPS
+                Sensors-->>VM: locationUnavailable
+                VM-->>UI: Mostrar Sin señal GPS
+            end
+        end
+        Usuario->>UI: Finaliza recorrido
+        UI->>VM: finishInspection()
+        VM->>Sensors: stopUpdates()
+        VM->>Repo: completeRoute(routeId)
+        Repo-->>VM: distancia, duración y animales
+        VM-->>UI: Mostrar resumen
+    end
+```
+
+---
+
+## SD-06 — Registrar animal con foto y ubicación opcional
+
+Cubre UC-20 y alimenta UC-21 (RF-20, RF-21).
+
+El flujo se divide en dos partes para distinguir la interacción con el
+dispositivo de la persistencia. Primero se obtiene la fotografía y se elige la
+ubicación; después se guarda el registro y se sincronizan la imagen y sus datos.
+
+### SD-06A — Capturar imagen y elegir ubicación
+
+Describe la captura mediante CameraX o la selección desde la galería. En una
+foto existente se puede usar la ubicación EXIF, la posición actual o continuar
+sin coordenadas.
+
+> **Nota:** la ubicación es opcional para que la falta de GPS o de metadatos no
+> impida registrar al animal.
+
+```mermaid
+sequenceDiagram
+    actor Usuario
+    participant UI as AnimalRegisterScreen
+    participant Media as CameraX / Galería / EXIF
+    participant GPS as Location Service
+    participant VM as AnimalViewModel
+
+    Usuario->>UI: Selecciona registrar animal
+    alt Tomar fotografía
+        UI->>Media: Abrir cámara
+        Media-->>UI: imageUri
+        UI->>GPS: getCurrentLocation()
+        GPS-->>UI: Coordenadas o no disponible
+    else Elegir de galería
+        UI->>Media: Seleccionar imagen
+        Media-->>UI: imageUri y coordenadas EXIF opcionales
+        UI-->>Usuario: Elegir EXIF, ubicación actual o ninguna
+        opt Elige ubicación actual
+            UI->>GPS: getCurrentLocation()
+            GPS-->>UI: Coordenadas o no disponible
+        end
+    end
+    UI->>VM: prepareRecord(imageUri, selectedLocation)
+    VM-->>UI: Formulario con ubicación opcional
+    Usuario->>UI: Completa nombre, notas y confirma
+    UI->>VM: save(animalData)
+```
+
+### SD-06B — Geocodificar, guardar y sincronizar
+
+Describe cómo Nominatim convierte las coordenadas en un nombre de lugar y cómo
+el repositorio conserva la foto localmente antes de subirla a Firebase Storage.
+La URL obtenida se almacena junto con los datos del animal en Firestore.
+
+> **Nota:** cuando no hay conexión, el registro conserva el estado `PENDING` y
+> la carga de la fotografía y la geocodificación pueden ejecutarse más tarde.
+
+```mermaid
+sequenceDiagram
+    participant VM as AnimalViewModel
+    participant Repo as AnimalRepository
+    participant Geo as Nominatim API
+    participant Room as Room / SQLite
+    participant Cloud as Storage + Firestore
+
+    VM->>Repo: create(animalRecord)
+    opt El registro tiene coordenadas
+        alt Hay conexión
+            Repo->>Geo: reverseGeocode(latitude, longitude)
+            Geo-->>Repo: locationName
+        else Sin conexión
+            Note over Repo: Marcar geocodificación pendiente
+        end
+    end
+    Repo->>Room: INSERT URI local y estado PENDING
+    Repo-->>VM: Guardado local exitoso
+    alt Hay conexión
+        Repo->>Cloud: Subir foto a Firebase Storage
+        Cloud-->>Repo: remotePhotoUrl
+        Repo->>Cloud: Guardar datos y URL en Firestore
+        Cloud-->>Repo: Confirmación
+        Repo->>Room: UPDATE URL y estado SYNCED
+    else Sin conexión
+        Note over Repo,Room: Foto, geocodificación y documento<br/>quedan pendientes de sincronización
+    end
+```
+
+---
+
+## SD-07 — Captura de anotación y OCR on-device
+
+Cubre UC-09, UC-10 y UC-11 (RF-09, RF-10, RF-11).
+
+Representa el registro de una transacción a partir de una fotografía. ML Kit
+reconoce el texto en el dispositivo y el parser intenta convertirlo en fecha,
+concepto, monto y categoría para prellenar el formulario.
+
+> **Nota:** el usuario siempre revisa y confirma la información. Si el OCR no
+> reconoce el texto, puede tomar otra foto o continuar con el registro manual.
+
+```mermaid
+sequenceDiagram
+    actor Usuario
+    participant UI as OcrCaptureScreen
+    participant VM as OcrViewModel
+    participant OCR as ML Kit + Parser
+    participant Repo as TransactionRepository
+
+    Usuario->>UI: Selecciona registrar desde foto
+    UI-->>Usuario: Abre cámara o galería
+    Usuario->>UI: Confirma imagen
+    UI->>VM: recognize(image)
+    VM->>OCR: processAndExtract(image)
+    alt No se reconoce texto
+        OCR-->>VM: ExtractionError
+        VM-->>UI: Ofrece nueva foto o registro manual
+    else Texto reconocido
+        OCR-->>VM: fecha, concepto, monto y categoría
+        VM-->>UI: Formulario prellenado
+        Usuario->>UI: Revisa, corrige y confirma
+        UI->>VM: save(correctedData)
+        VM->>VM: validate(correctedData)
+        alt Datos inválidos
+            VM-->>UI: Muestra errores
+        else Datos válidos
+            VM->>Repo: create(transaction)
+            Repo-->>VM: Guardado y sincronización iniciada
+            VM-->>UI: Transacción registrada
+        end
+    end
+```
+
+---
+
+## SD-08 — Crear recordatorio y programar notificación local
+
+Cubre el flujo principal de UC-19 (RF-19).
+
+Muestra la creación o edición de un recordatorio y su programación en Android.
+También incluye la cancelación de la alarma cuando el recordatorio se completa
+o se elimina.
+
+> **Nota:** el recordatorio se sincroniza como dato de la finca, pero la alarma
+> que aparece en una fecha y hora determinadas se programa localmente en el
+> dispositivo.
+
+```mermaid
+sequenceDiagram
+    actor Usuario
+    participant UI as ReminderScreen
+    participant VM as ReminderViewModel
+    participant Repo as ReminderRepository
+    participant Android as Scheduler + Notifications
+
+    Usuario->>UI: Crea o edita recordatorio
+    UI->>VM: save(formData)
+    VM->>VM: validate(formData)
+    alt Datos inválidos
+        VM-->>UI: Muestra errores
+    else Datos válidos
+        VM->>Repo: upsert(reminder, status = SCHEDULED)
+        Note over Repo: Guarda en Room y sincroniza con Firestore
+        Repo-->>VM: reminderId
+        VM->>Android: schedule(reminderId, scheduledAt, repeat)
+        Android-->>VM: Programación confirmada
+        VM-->>UI: Recordatorio guardado
+        Note over Android: Al llegar la fecha y hora
+        Android-->>Usuario: Mostrar notificación local
+    end
+    opt Completar o eliminar
+        Usuario->>UI: Completa o elimina recordatorio
+        UI->>VM: close(reminderId, action)
+        VM->>Android: cancel(reminderId)
+        VM->>Repo: updateStatus(COMPLETED o DELETED)
+        VM-->>UI: Lista actualizada
+    end
+```
+
+---
+
+## SD-09 — Notificar al propietario por una transacción del trabajador
+
+Cubre el flujo push alternativo de UC-19.
+
+Describe la notificación enviada al propietario cuando un trabajador registra
+una transacción. La creación del documento activa una Cloud Function, que busca
+los propietarios autorizados y envía el mensaje por Firebase Cloud Messaging.
+
+> **Nota:** `FirebaseMessagingService` recibe el mensaje en el dispositivo del
+> propietario y genera la notificación visible de Android.
+
+```mermaid
+sequenceDiagram
+    participant Worker as App del trabajador
+    participant FS as Cloud Firestore
+    participant Fn as Cloud Functions
+    participant FCM as Firebase Cloud Messaging
+    participant Owner as FirebaseMessagingService del propietario
+
+    Worker->>FS: Crear transacción con farmId y createdBy
+    FS-->>Fn: Evento onDocumentCreated
+    Fn->>FS: Consultar membresías OWNER activas
+    FS-->>Fn: Destinatarios y tokens autorizados
+    Fn->>FCM: Enviar mensaje a tokens autorizados
+    FCM-->>Owner: Entregar mensaje push
+    Owner->>Owner: Validar payload y crear notificación
+```
+
+---
+
+## SD-10 — Exportar reporte
+
+Cubre UC-08 (RF-08).
+
+Representa la generación de un reporte a partir de los filtros activos del
+balance o del historial. El caso de uso consulta las transacciones, genera el
+archivo solicitado y entrega una URI que Android puede compartir.
+
+> **Nota:** si la consulta no devuelve datos, el sistema informa la situación y
+> no crea un archivo vacío.
+
+```mermaid
+sequenceDiagram
+    actor Propietario
+    participant UI as BalanceScreen / HistoryScreen
+    participant VM as ReportViewModel
+    participant UC as ExportReportUseCase
+    participant Repo as TransactionRepository
+
+    Propietario->>UI: Selecciona exportar
+    UI-->>Propietario: Muestra PDF o Excel
+    Propietario->>UI: Elige formato
+    UI->>VM: export(format, activeFilters, farmId)
+    VM->>UC: execute(format, activeFilters, farmId)
+    UC->>Repo: getByFilters(activeFilters, farmId)
+    Note over Repo: Consulta la proyección local de Room
+    Repo-->>UC: transactions
+    alt No hay datos
+        UC-->>VM: EmptyDataError
+        VM-->>UI: No hay datos para exportar
+    else Hay datos
+        UC->>UC: Generar archivo y URI compartible
+        UC-->>VM: fileUri
+        VM-->>UI: Abrir Android Share Sheet
+        UI-->>Propietario: Opciones para guardar o compartir
+    end
+```
