@@ -5,29 +5,18 @@
 Thumbs.db
 /temp/
 
-# Android (aplica si el Paso 5 elige Kotlin nativo)
+# Android
 *.iml
 .gradle/
-/local.properties
+local.properties
 /.idea/
-/build/
+build/
 /captures/
 .externalNativeBuild/
 .cxx/
 
-# Flutter (aplica si el Paso 5 elige Flutter)
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-/build/
-
-# Node (si el backend termina siendo JS/TS)
-node_modules/
-
-# Python (si el backend termina siendo Python)
-__pycache__/
-*.pyc
-.venv/
+# Firebase — contiene API keys, nunca commitear
+app/google-services.json
 
 # Variables de entorno / secretos — nunca commitear
 .env
@@ -41,3 +30,6 @@ SKILL.md
 
 # Config local de Claude Code — no va al repo
 .claude/
+
+# Mockups temporales
+/mockups_temp/
