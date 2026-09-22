@@ -1,0 +1,77 @@
+<resources>
+    <string name="app_name">SGE Finca</string>
+
+    <!-- Bottom Navigation -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_transactions">Transacciones</string>
+    <string name="nav_inspections">Inspecciones</string>
+    <string name="nav_animals">Ganado</string>
+    <string name="nav_more">Más</string>
+
+    <!-- Auth -->
+    <string name="login_title">Iniciar Sesión</string>
+    <string name="register_title">Crear Cuenta</string>
+    <string name="email_label">Correo electrónico</string>
+    <string name="password_label">Contraseña</string>
+    <string name="confirm_password_label">Confirmar contraseña</string>
+    <string name="login_button">Iniciar Sesión</string>
+    <string name="register_button">Registrarse</string>
+    <string name="no_account">¿No tienes cuenta?</string>
+    <string name="has_account">¿Ya tienes cuenta?</string>
+    <string name="farm_name_label">Nombre de la finca</string>
+    <string name="invite_code_label">Código de invitación</string>
+    <string name="create_farm">Crear finca</string>
+    <string name="join_farm">Unirse a finca</string>
+
+    <!-- Transactions -->
+    <string name="new_transaction">Nueva Transacción</string>
+    <string name="income">Ingreso</string>
+    <string name="expense">Egreso</string>
+    <string name="amount_label">Monto</string>
+    <string name="category_label">Categoría</string>
+    <string name="date_label">Fecha</string>
+    <string name="note_label">Nota</string>
+    <string name="save">Guardar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete">Eliminar</string>
+    <string name="edit">Editar</string>
+    <string name="transaction_history">Historial</string>
+    <string name="delete_confirm_title">¿Eliminar transacción?</string>
+    <string name="delete_confirm_message">Esta acción no se puede deshacer.</string>
+
+    <!-- Reports -->
+    <string name="reports_title">Reportes y Balance</string>
+    <string name="balance">Balance</string>
+    <string name="total_income">Total Ingresos</string>
+    <string name="total_expenses">Total Egresos</string>
+
+    <!-- Categories -->
+    <string name="categories_title">Categorías</string>
+
+    <!-- Workers -->
+    <string name="workers_title">Gestión de Trabajadores</string>
+
+    <!-- Inspections -->
+    <string name="inspection_title">Inspección de Campo</string>
+    <string name="start_inspection">Iniciar Recorrido</string>
+    <string name="stop_inspection">Detener</string>
+    <string name="inspection_history">Historial de Inspecciones</string>
+
+    <!-- Animals -->
+    <string name="register_animal">Registrar Animal</string>
+    <string name="animal_map">Mapa de Ganado</string>
+
+    <!-- Contacts -->
+    <string name="contacts_title">Directorio de Contactos</string>
+
+    <!-- Reminders -->
+    <string name="reminders_title">Recordatorios</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Configuración</string>
+
+    <!-- General -->
+    <string name="loading">Cargando…</string>
+    <string name="error_generic">Ocurrió un error</string>
+    <string name="success">¡Registro guardado!</string>
+</resources>
