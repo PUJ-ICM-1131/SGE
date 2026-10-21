@@ -2,8 +2,10 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    // TODO: uncomment after adding app/google-services.json from Firebase Console
-    // alias(libs.plugins.google.services)
+    alias(libs.plugins.dagger)
+    alias(libs.plugins.google.ksp)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 android {
@@ -62,12 +64,20 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
-    // --- Dependencies below: uncomment as features are implemented ---
+    // Hilt
+    implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
+    ksp(libs.hilt.compiler)
 
-    // Firebase (requires google-services plugin + google-services.json)
-    // implementation(platform(libs.firebase.bom))
-    // implementation(libs.firebase.auth)
-    // implementation(libs.firebase.firestore)
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
+
+    // --- Descomenta a medida que implementes cada función ---
+
     // implementation(libs.firebase.storage)
     // implementation(libs.firebase.messaging)
 
@@ -76,12 +86,12 @@ dependencies {
     // implementation(libs.maps.compose)
     // implementation(libs.play.services.location)
 
-    // Room (needs KSP plugin for room-compiler)
+    // Room
     // implementation(libs.room.runtime)
     // implementation(libs.room.ktx)
     // ksp(libs.room.compiler)
 
-    // Network (Retrofit for Nominatim API)
+    // Network
     // implementation(libs.retrofit)
     // implementation(libs.retrofit.converter.gson)
     // implementation(libs.okhttp)
