@@ -14,15 +14,21 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionHistoryScreen(
+    viewModel: TransactionHistoryViewModel = viewModel(),
     onNavigateToNew: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
 ) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Historial de Transacciones") })
@@ -33,7 +39,6 @@ fun TransactionHistoryScreen(
             }
         },
     ) { innerPadding ->
-        // TODO: replace with LazyColumn of transactions from ViewModel
         Column(
             modifier = Modifier
                 .fillMaxSize()

@@ -17,11 +17,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onNavigateBack: () -> Unit) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel = viewModel(),
+    onNavigateBack: () -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -51,7 +59,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                 leadingContent = {
                     Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
                 },
-                modifier = Modifier.clickable { /* TODO: sign out via Firebase Auth */ },
+                modifier = Modifier.clickable { viewModel.onSignOut() },
             )
         }
     }

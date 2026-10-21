@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -20,13 +19,21 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkersScreen(onNavigateBack: () -> Unit) {
+fun WorkersScreen(
+    viewModel: WorkersViewModel = viewModel(),
+    onNavigateBack: () -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -45,7 +52,6 @@ fun WorkersScreen(onNavigateBack: () -> Unit) {
                 .padding(innerPadding)
                 .padding(16.dp),
         ) {
-            // Invite code card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -58,9 +64,8 @@ fun WorkersScreen(onNavigateBack: () -> Unit) {
                         style = MaterialTheme.typography.labelLarge,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    // TODO: show actual invite code from Firebase
                     Text(
-                        text = "XXXX-XXXX",
+                        text = state.inviteCode,
                         style = MaterialTheme.typography.headlineMedium,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -76,7 +81,6 @@ fun WorkersScreen(onNavigateBack: () -> Unit) {
             Text("Trabajadores", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // TODO: replace with LazyColumn of workers
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,

@@ -15,26 +15,24 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewTransactionScreen(onNavigateBack: () -> Unit) {
-    var isIncome by remember { mutableStateOf(true) }
-    var amount by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf("") }
+fun NewTransactionScreen(
+    viewModel: NewTransactionViewModel = viewModel(),
+    onNavigateBack: () -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -54,25 +52,24 @@ fun NewTransactionScreen(onNavigateBack: () -> Unit) {
                 .padding(innerPadding)
                 .padding(16.dp),
         ) {
-            // Type selector
             Row {
                 FilterChip(
-                    selected = isIncome,
-                    onClick = { isIncome = true },
+                    selected = state.isIncome,
+                    onClick = { viewModel.onTypeChanged(true) },
                     label = { Text("Ingreso") },
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 FilterChip(
-                    selected = !isIncome,
-                    onClick = { isIncome = false },
+                    selected = !state.isIncome,
+                    onClick = { viewModel.onTypeChanged(false) },
                     label = { Text("Egreso") },
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = amount,
-                onValueChange = { amount = it },
+                value = state.amount,
+                onValueChange = viewModel::onAmountChanged,
                 label = { Text("Monto") },
                 prefix = { Text("$") },
                 modifier = Modifier.fillMaxWidth(),
@@ -81,8 +78,8 @@ fun NewTransactionScreen(onNavigateBack: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = category,
-                onValueChange = { category = it },
+                value = state.category,
+                onValueChange = viewModel::onCategoryChanged,
                 label = { Text("Categoría") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -90,8 +87,8 @@ fun NewTransactionScreen(onNavigateBack: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
+                value = state.note,
+                onValueChange = viewModel::onNoteChanged,
                 label = { Text("Nota (opcional)") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
