@@ -22,22 +22,34 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.sge.finca.ui.theme.ExpenseRed
 import com.sge.finca.ui.theme.IncomeGreen
+import com.sge.finca.ui.components.ShakeHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToNewTransaction: () -> Unit,
     onNavigateToReports: () -> Unit,
 ) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    ShakeHandler(
+        onStart = viewModel::startShakeDetection,
+        onStop = viewModel::stopShakeDetection,
+        onShake = onNavigateToNewTransaction,
+    )
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("SGE Finca") },
+                title = { Text(state.farmName) },
                 actions = {
                     IconButton(onClick = onNavigateToReports) {
                         Icon(Icons.Default.BarChart, contentDescription = "Reportes")
@@ -57,7 +69,6 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .padding(16.dp),
         ) {
-            // Balance card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -71,7 +82,7 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "$0",
+                        text = "$${state.balanceCents / 100}",
                         style = MaterialTheme.typography.displayLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -79,7 +90,6 @@ fun HomeScreen(
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Income/Expense summary
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -92,7 +102,7 @@ fun HomeScreen(
                         Text("Ingresos", style = MaterialTheme.typography.labelLarge)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "$0",
+                            text = "$${state.incomeCents / 100}",
                             style = MaterialTheme.typography.headlineMedium,
                             color = IncomeGreen,
                         )
@@ -106,7 +116,7 @@ fun HomeScreen(
                         Text("Egresos", style = MaterialTheme.typography.labelLarge)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "$0",
+                            text = "$${state.expenseCents / 100}",
                             style = MaterialTheme.typography.headlineMedium,
                             color = ExpenseRed,
                         )
@@ -121,7 +131,6 @@ fun HomeScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Empty state
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

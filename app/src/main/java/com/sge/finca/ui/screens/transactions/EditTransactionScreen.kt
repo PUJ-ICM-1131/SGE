@@ -25,38 +25,35 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditTransactionScreen(
     transactionId: String,
+    viewModel: EditTransactionViewModel = viewModel(),
     onNavigateBack: () -> Unit,
 ) {
-    var amount by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf("") }
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    if (showDeleteDialog) {
+    if (state.showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { viewModel.onToggleDeleteDialog(false) },
             title = { Text("¿Eliminar transacción?") },
             text = { Text("Esta acción no se puede deshacer.") },
             confirmButton = {
                 TextButton(onClick = {
-                    showDeleteDialog = false
+                    viewModel.onToggleDeleteDialog(false)
                     onNavigateBack()
                 }) {
                     Text("Eliminar", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(onClick = { viewModel.onToggleDeleteDialog(false) }) {
                     Text("Cancelar")
                 }
             },
@@ -73,7 +70,7 @@ fun EditTransactionScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showDeleteDialog = true }) {
+                    IconButton(onClick = { viewModel.onToggleDeleteDialog(true) }) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = "Eliminar",
@@ -91,8 +88,8 @@ fun EditTransactionScreen(
                 .padding(16.dp),
         ) {
             OutlinedTextField(
-                value = amount,
-                onValueChange = { amount = it },
+                value = state.amount,
+                onValueChange = viewModel::onAmountChanged,
                 label = { Text("Monto") },
                 prefix = { Text("$") },
                 modifier = Modifier.fillMaxWidth(),
@@ -101,8 +98,8 @@ fun EditTransactionScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = category,
-                onValueChange = { category = it },
+                value = state.category,
+                onValueChange = viewModel::onCategoryChanged,
                 label = { Text("Categoría") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -110,8 +107,8 @@ fun EditTransactionScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
+                value = state.note,
+                onValueChange = viewModel::onNoteChanged,
                 label = { Text("Nota (opcional)") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,

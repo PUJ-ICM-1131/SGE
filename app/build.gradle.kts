@@ -10,6 +10,7 @@ plugins {
 
 android {
     namespace = "com.sge.finca"
+
     compileSdk {
         version = release(37)
     }

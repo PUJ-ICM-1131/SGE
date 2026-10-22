@@ -21,19 +21,21 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sge.finca.ui.theme.ExpenseRed
 import com.sge.finca.ui.theme.IncomeGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportsScreen(onNavigateBack: () -> Unit) {
-    var selectedPeriod by remember { mutableStateOf("Mes") }
+fun ReportsScreen(
+    viewModel: ReportsViewModel = viewModel(),
+    onNavigateBack: () -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val periods = listOf("Semana", "Mes", "Año")
 
     Scaffold(
@@ -54,25 +56,23 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
                 .padding(innerPadding)
                 .padding(16.dp),
         ) {
-            // Period filter
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 periods.forEach { period ->
                     FilterChip(
-                        selected = selectedPeriod == period,
-                        onClick = { selectedPeriod = period },
+                        selected = state.selectedPeriod == period,
+                        onClick = { viewModel.onPeriodChanged(period) },
                         label = { Text(period) },
                     )
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Balance card
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text("Balance", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "$0",
+                        text = "$${state.balanceCents / 100}",
                         style = MaterialTheme.typography.displayLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -90,7 +90,11 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text("Ingresos", style = MaterialTheme.typography.labelLarge)
-                        Text("$0", style = MaterialTheme.typography.headlineMedium, color = IncomeGreen)
+                        Text(
+                            "$${state.incomeCents / 100}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = IncomeGreen,
+                        )
                     }
                 }
                 Card(modifier = Modifier.weight(1f)) {
@@ -99,13 +103,16 @@ fun ReportsScreen(onNavigateBack: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text("Egresos", style = MaterialTheme.typography.labelLarge)
-                        Text("$0", style = MaterialTheme.typography.headlineMedium, color = ExpenseRed)
+                        Text(
+                            "$${state.expenseCents / 100}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = ExpenseRed,
+                        )
                     }
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Chart placeholder
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
