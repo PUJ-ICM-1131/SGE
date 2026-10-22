@@ -8,6 +8,7 @@ data class InspectionMapUiState(
     val elapsedSeconds: Long = 0,
     val distanceMeters: Double = 0.0,
     val pointCount: Int = 0,
+    val hasGpsSignal: Boolean = false,
     val routePoints: List<LocationState> = emptyList(),
     val userLatitude: Double = 4.628,
     val userLongitude: Double = -74.065,

@@ -83,7 +83,7 @@ class LocationHelper @Inject constructor(
         System.currentTimeMillis() - timestamp < MAX_AGE_MS
 
     companion object {
-        private const val TRACKING_INTERVAL_MS = 5_000L
+        private const val TRACKING_INTERVAL_MS = 3_000L
         private const val MIN_DISPLACEMENT_METERS = 3f
         private const val MAX_ACCEPTABLE_ACCURACY = 50f
         private const val MAX_AGE_MS = 60_000L

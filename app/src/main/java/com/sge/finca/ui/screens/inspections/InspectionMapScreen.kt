@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -22,11 +24,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,8 +52,16 @@ fun InspectionMapScreen(
     onNavigateToHistory: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.gpsLostEvent.collect {
+            snackbarHostState.showSnackbar("Señal GPS perdida. Verifica tu ubicación.")
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Inspección de Campo") },
@@ -103,7 +116,7 @@ fun InspectionMapScreen(
                             TrackingStatsOverlay(
                                 elapsedSeconds = state.elapsedSeconds,
                                 distanceMeters = state.distanceMeters,
-                                pointCount = state.pointCount,
+                                hasGpsSignal = state.hasGpsSignal,
                                 isPaused = state.isPaused,
                                 modifier = Modifier.align(Alignment.TopCenter),
                             )
@@ -131,7 +144,7 @@ fun InspectionMapScreen(
 private fun TrackingStatsOverlay(
     elapsedSeconds: Long,
     distanceMeters: Double,
-    pointCount: Int,
+    hasGpsSignal: Boolean,
     isPaused: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -155,8 +168,28 @@ private fun TrackingStatsOverlay(
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             StatItem("Tiempo", formatDuration(elapsedSeconds))
             StatItem("Distancia", formatDistance(distanceMeters))
-            StatItem("Puntos", "$pointCount")
+            GpsIndicator(hasSignal = hasGpsSignal)
         }
+    }
+}
+
+@Composable
+private fun GpsIndicator(hasSignal: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(
+                    color = if (hasSignal) Color(0xFF4CAF50) else Color(0xFFF44336),
+                    shape = CircleShape,
+                ),
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "GPS",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
