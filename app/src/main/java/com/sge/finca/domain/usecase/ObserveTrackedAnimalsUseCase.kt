@@ -24,11 +24,13 @@ class ObserveTrackedAnimalsUseCase @Inject constructor(
         ) { animals, live ->
             animals.map { animal ->
                 val location = live[animal.id]
+                val speed = location?.speedMetersPerSecond ?: 0f
                 TrackedAnimal(
                     animal = animal,
                     latitude = location?.latitude ?: animal.latitude,
                     longitude = location?.longitude ?: animal.longitude,
-                    isMoving = (location?.speedMetersPerSecond ?: 0f) > MOVING_SPEED_THRESHOLD,
+                    isMoving = speed > MOVING_SPEED_THRESHOLD,
+                    speedMetersPerSecond = speed,
                 )
             }
         }

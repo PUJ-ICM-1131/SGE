@@ -9,4 +9,6 @@ data class TrackedAnimal(
     val latitude: Double,
     val longitude: Double,
     val isMoving: Boolean = false,
+    /** Velocidad actual en m/s (0 si está quieto). */
+    val speedMetersPerSecond: Float = 0f,
 )

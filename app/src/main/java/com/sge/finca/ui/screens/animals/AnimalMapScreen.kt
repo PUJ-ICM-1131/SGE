@@ -1,6 +1,8 @@
 package com.sge.finca.ui.screens.animals
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
@@ -21,16 +22,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,12 +46,13 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.GoogleMapComposable
 import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MarkerComposable
+import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import com.sge.finca.domain.model.TrackedAnimal
 import com.sge.finca.ui.components.AnimalAvatar
 import com.sge.finca.ui.components.LocationPermissionHandler
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,10 +108,16 @@ fun AnimalMapScreen(
                         properties = MapProperties(isMyLocationEnabled = true),
                         onMapClick = { viewModel.onSelectionCleared() },
                     ) {
+                        val context = LocalContext.current
+                        val density = LocalDensity.current
+                        val sprites = remember {
+                            CowSprites.load(context, with(density) { 88.dp.roundToPx() })
+                        }
                         state.animals.forEach { tracked ->
                             key(tracked.animal.id) {
                                 AnimalMarker(
                                     tracked = tracked,
+                                    sprites = sprites,
                                     onClick = { viewModel.onAnimalSelected(tracked.animal.id) },
                                 )
                             }
@@ -127,52 +140,75 @@ fun AnimalMapScreen(
 }
 
 /**
- * Marcador de vaca. La posición sale de TrackedAnimal (registro o ubicación en vivo),
- * así que cuando llegue la API el marcador se mueve solo y cambia a "corriendo".
+ * Marcador de vaca animado con sprites:
+ *  - Desliza suavemente hacia cada nueva posición (interpolación lineal).
+ *  - Mira hacia donde camina (este/oeste).
+ *  - Cambia de pose según la velocidad: quieta, caminando o corriendo, ciclando fotogramas.
+ * La posición y la velocidad salen de TrackedAnimal (registro o ubicación en vivo).
  */
 @Composable
 @GoogleMapComposable
 private fun AnimalMarker(
     tracked: TrackedAnimal,
+    sprites: CowSprites,
     onClick: () -> Unit,
 ) {
-    val position = LatLng(tracked.latitude, tracked.longitude)
-    val markerState = rememberMarkerState(key = tracked.animal.id, position = position)
+    val target = LatLng(tracked.latitude, tracked.longitude)
+    val markerState = rememberMarkerState(key = tracked.animal.id, position = target)
 
-    // Si la posición cambia (ubicación en vivo), se mueve el marcador
-    LaunchedEffect(position) { markerState.position = position }
+    val progress = remember { Animatable(1f) }
+    var facingEast by remember { mutableStateOf(true) }
+    var frame by remember { mutableIntStateOf(0) }
 
-    // keys: se vuelve a dibujar el ícono cuando cambia el estado de movimiento
-    MarkerComposable(
-        tracked.animal.id,
-        tracked.isMoving,
+    // 1) Deslizamiento suave desde donde está dibujada ahora hasta la nueva posición
+    LaunchedEffect(target) {
+        val start = markerState.position
+        if (start == target) return@LaunchedEffect
+        if (target.longitude != start.longitude) facingEast = target.longitude > start.longitude
+        progress.snapTo(0f)
+        progress.animateTo(1f, animationSpec = tween(durationMillis = SLIDE_MILLIS, easing = LinearEasing)) {
+            markerState.position = LatLng(
+                start.latitude + (target.latitude - start.latitude) * value,
+                start.longitude + (target.longitude - start.longitude) * value,
+            )
+        }
+    }
+
+    // 2) Pose según la velocidad
+    val pose = when {
+        tracked.speedMetersPerSecond >= RUN_SPEED -> CowPose.RUN
+        tracked.isMoving || progress.isRunning -> CowPose.WALK
+        else -> CowPose.IDLE
+    }
+
+    // 3) Ciclo de fotogramas de la pose actual
+    LaunchedEffect(pose) {
+        frame = 0
+        if (pose.frames > 1) {
+            while (true) {
+                delay(pose.frameMillis)
+                frame = (frame + 1) % pose.frames
+            }
+        }
+    }
+
+    Marker(
         state = markerState,
+        icon = sprites.frame(pose, frame, facingEast),
+        anchor = Offset(0.5f, 0.86f), // el punto del mapa queda en las patas (centro de la sombra)
         title = tracked.animal.name,
         onClick = {
             onClick()
             true
         },
-    ) {
-        CowMarkerContent(isMoving = tracked.isMoving)
-    }
+    )
 }
 
-@Composable
-private fun CowMarkerContent(isMoving: Boolean) {
-    Surface(
-        shape = CircleShape,
-        color = Color.White,
-        shadowElevation = 4.dp,
-        border = BorderStroke(2.dp, if (isMoving) Color(0xFFFF8F00) else Color(0xFF2E7D32)),
-    ) {
-        // Quieta: 🐄 — En movimiento: 🐄💨 (corriendo)
-        Text(
-            text = if (isMoving) "🐄💨" else "🐄",
-            fontSize = 26.sp,
-            modifier = Modifier.padding(6.dp),
-        )
-    }
-}
+/** Tiempo de deslizamiento: igual al intervalo de actualización para movimiento continuo. */
+private const val SLIDE_MILLIS = 2000
+
+/** Desde esta velocidad (m/s) la vaca se dibuja corriendo. */
+private const val RUN_SPEED = 2.5f
 
 @Composable
 private fun AnimalInfoCard(

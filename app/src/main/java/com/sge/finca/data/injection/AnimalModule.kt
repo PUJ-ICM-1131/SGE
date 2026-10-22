@@ -1,7 +1,7 @@
 package com.sge.finca.data.injection
 
 import com.sge.finca.data.repository.RoomAnimalRepository
-import com.sge.finca.data.repository.StationaryAnimalLocationSource
+import com.sge.finca.data.repository.SimulatedAnimalLocationSource
 import com.sge.finca.domain.repository.AnimalLocationSource
 import com.sge.finca.domain.repository.AnimalRepository
 import dagger.Binds
@@ -18,7 +18,9 @@ abstract class AnimalModule {
     @Singleton
     abstract fun bindAnimalRepository(impl: RoomAnimalRepository): AnimalRepository
 
+    // PRUEBAS: los animales caminan solos. Para dejarlos quietos usar StationaryAnimalLocationSource.
+    // Cuando exista la API real, reemplazar por su implementación.
     @Binds
     @Singleton
-    abstract fun bindAnimalLocationSource(impl: StationaryAnimalLocationSource): AnimalLocationSource
+    abstract fun bindAnimalLocationSource(impl: SimulatedAnimalLocationSource): AnimalLocationSource
 }
