@@ -19,17 +19,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InspectionMapScreen(onNavigateToHistory: () -> Unit) {
-    var isTracking by remember { mutableStateOf(false) }
+fun InspectionMapScreen(
+    viewModel: InspectionMapViewModel = viewModel(),
+    onNavigateToHistory: () -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -48,7 +50,6 @@ fun InspectionMapScreen(onNavigateToHistory: () -> Unit) {
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            // TODO: replace with Google Maps composable
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -66,22 +67,21 @@ fun InspectionMapScreen(onNavigateToHistory: () -> Unit) {
                 )
             }
 
-            // Start/Stop button at bottom
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(16.dp),
             ) {
-                if (isTracking) {
+                if (state.isTracking) {
                     OutlinedButton(
-                        onClick = { isTracking = false },
+                        onClick = { viewModel.onStopTracking() },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("Detener Recorrido")
                     }
                 } else {
                     Button(
-                        onClick = { isTracking = true },
+                        onClick = { viewModel.onStartTracking() },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("Iniciar Recorrido")

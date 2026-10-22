@@ -17,27 +17,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun RegisterScreen(
+    viewModel: RegisterViewModel = viewModel(),
     onNavigateToLogin: () -> Unit,
     onRegisterSuccess: () -> Unit,
 ) {
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var farmName by remember { mutableStateOf("") }
-    var inviteCode by remember { mutableStateOf("") }
-    var step by remember { mutableIntStateOf(0) } // 0 = account, 1 = farm
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -47,32 +40,32 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = if (step == 0) "Crear Cuenta" else "Configurar Finca",
+            text = if (state.step == 0) "Crear Cuenta" else "Configurar Finca",
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.primary,
         )
         Spacer(modifier = Modifier.height(32.dp))
 
-        if (step == 0) {
+        if (state.step == 0) {
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+                value = state.name,
+                onValueChange = viewModel::onNameChanged,
                 label = { Text("Nombre completo") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
+                value = state.email,
+                onValueChange = viewModel::onEmailChanged,
                 label = { Text("Correo electrónico") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = state.password,
+                onValueChange = viewModel::onPasswordChanged,
                 label = { Text("Contraseña") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -80,8 +73,8 @@ fun RegisterScreen(
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
+                value = state.confirmPassword,
+                onValueChange = viewModel::onConfirmPasswordChanged,
                 label = { Text("Confirmar contraseña") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -89,7 +82,7 @@ fun RegisterScreen(
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(
-                onClick = { step = 1 },
+                onClick = { viewModel.onContinueToFarmSetup() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -98,8 +91,8 @@ fun RegisterScreen(
             }
         } else {
             OutlinedTextField(
-                value = farmName,
-                onValueChange = { farmName = it },
+                value = state.farmName,
+                onValueChange = viewModel::onFarmNameChanged,
                 label = { Text("Nombre de la finca") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -124,8 +117,8 @@ fun RegisterScreen(
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = inviteCode,
-                    onValueChange = { inviteCode = it },
+                    value = state.inviteCode,
+                    onValueChange = viewModel::onInviteCodeChanged,
                     label = { Text("Código de invitación") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,

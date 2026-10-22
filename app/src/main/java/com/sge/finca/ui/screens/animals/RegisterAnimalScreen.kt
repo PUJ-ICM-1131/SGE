@@ -1,5 +1,6 @@
 package com.sge.finca.ui.screens.animals
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,18 +24,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RegisterAnimalScreen(onNavigateBack: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
+fun RegisterAnimalScreen(
+    viewModel: RegisterAnimalViewModel = viewModel(),
+    onNavigateBack: () -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -54,7 +56,6 @@ fun RegisterAnimalScreen(onNavigateBack: () -> Unit) {
                 .padding(innerPadding)
                 .padding(16.dp),
         ) {
-            // Photo placeholder
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -63,7 +64,7 @@ fun RegisterAnimalScreen(onNavigateBack: () -> Unit) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Icon(
                         Icons.Default.CameraAlt,
@@ -80,17 +81,16 @@ fun RegisterAnimalScreen(onNavigateBack: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
+                value = state.name,
+                onValueChange = viewModel::onNameChanged,
                 label = { Text("Nombre del animal") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            // GPS location (auto-filled)
             OutlinedTextField(
-                value = "Obteniendo ubicación GPS...",
+                value = state.locationText,
                 onValueChange = {},
                 label = { Text("Ubicación") },
                 modifier = Modifier.fillMaxWidth(),
@@ -100,8 +100,8 @@ fun RegisterAnimalScreen(onNavigateBack: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it },
+                value = state.notes,
+                onValueChange = viewModel::onNotesChanged,
                 label = { Text("Notas (opcional)") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
