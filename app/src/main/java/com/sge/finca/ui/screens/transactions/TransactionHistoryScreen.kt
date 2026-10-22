@@ -18,16 +18,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.sge.finca.ui.components.ShakeHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionHistoryScreen(
-    viewModel: TransactionHistoryViewModel = viewModel(),
+    viewModel: TransactionHistoryViewModel = hiltViewModel(),
     onNavigateToNew: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    ShakeHandler(
+        onStart = viewModel::startShakeDetection,
+        onStop = viewModel::stopShakeDetection,
+        onShake = onNavigateToNew,
+    )
 
     Scaffold(
         topBar = {

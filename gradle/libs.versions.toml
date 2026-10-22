@@ -1,8 +1,8 @@
 [versions]
 agp = "9.3.2"
 kotlin = "2.2.10"
-ksp = "2.3.4"                 # verifica la última compatible con tu Kotlin
-hilt = "2.59.2"               # AGP 9 necesita Hilt reciente; verifica la última
+ksp = "2.3.4"
+hilt = "2.59.2"
 hiltNavigationCompose = "1.2.0"
 coreKtx = "1.19.0"
 lifecycleRuntimeKtx = "2.11.0"
