@@ -6,6 +6,7 @@ data class RegisterAnimalUiState(
     val photoUri: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val locationAccuracy: Float? = null,
     val locationText: String = "Obteniendo ubicación GPS...",
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
