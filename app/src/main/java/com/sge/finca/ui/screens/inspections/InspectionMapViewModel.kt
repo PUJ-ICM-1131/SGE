@@ -2,6 +2,9 @@ package com.sge.finca.ui.screens.inspections
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sge.finca.domain.model.InspectionRoute
+import com.sge.finca.domain.model.RoutePoint
+import com.sge.finca.domain.repository.InspectionRepository
 import com.sge.finca.platform.location.LocationHelper
 import com.sge.finca.platform.location.LocationState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -12,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -21,6 +25,7 @@ import kotlin.math.sqrt
 @HiltViewModel
 class InspectionMapViewModel @Inject constructor(
     private val locationHelper: LocationHelper,
+    private val inspectionRepository: InspectionRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InspectionMapUiState())
@@ -30,6 +35,8 @@ class InspectionMapViewModel @Inject constructor(
     private var timerJob: Job? = null
     private var startTimeMs = 0L
     private var accumulatedSeconds = 0L
+    private var currentRouteId: String? = null
+    private var pointOrder = 0
 
     fun onPermissionGranted() {
         viewModelScope.launch {
@@ -59,7 +66,17 @@ class InspectionMapViewModel @Inject constructor(
             )
         }
         accumulatedSeconds = 0L
+        pointOrder = 0
         startTimeMs = System.currentTimeMillis()
+
+        viewModelScope.launch {
+            val route = InspectionRoute(
+                id = UUID.randomUUID().toString(),
+                startTime = startTimeMs,
+            )
+            currentRouteId = inspectionRepository.createRoute(route)
+        }
+
         startTimer()
         startLocationCollection()
     }
@@ -81,19 +98,58 @@ class InspectionMapViewModel @Inject constructor(
     fun onStopTracking() {
         trackingJob?.cancel()
         timerJob?.cancel()
+        val state = _uiState.value
         _uiState.update { it.copy(isTracking = false, isPaused = false) }
-        // TODO: persist route to repository
+
+        viewModelScope.launch {
+            currentRouteId?.let { id ->
+                inspectionRepository.finishRoute(id, state.distanceMeters)
+            }
+            currentRouteId = null
+        }
     }
 
     private fun startLocationCollection() {
         trackingJob = viewModelScope.launch {
             locationHelper.trackLocation().collect { loc ->
-                addRoutePoint(loc)
+                if (isValidPoint(loc)) {
+                    addRoutePoint(loc)
+                }
             }
         }
     }
 
+    private fun isValidPoint(loc: LocationState): Boolean {
+        val points = _uiState.value.routePoints
+        if (points.isEmpty()) return true
+
+        val last = points.last()
+        val distance = haversine(last.latitude, last.longitude, loc.latitude, loc.longitude)
+        val timeDiffSeconds = (loc.timestamp - last.timestamp) / 1000.0
+        if (timeDiffSeconds <= 0) return false
+
+        val speedMs = distance / timeDiffSeconds
+        return speedMs <= MAX_WALKING_SPEED_MS
+    }
+
     private fun addRoutePoint(loc: LocationState) {
+        val routeId = currentRouteId ?: return
+        pointOrder++
+
+        viewModelScope.launch {
+            inspectionRepository.addPoint(
+                RoutePoint(
+                    id = UUID.randomUUID().toString(),
+                    routeId = routeId,
+                    order = pointOrder,
+                    latitude = loc.latitude,
+                    longitude = loc.longitude,
+                    accuracy = loc.accuracy,
+                    timestamp = loc.timestamp,
+                ),
+            )
+        }
+
         _uiState.update { current ->
             val points = current.routePoints
             val distance = if (points.isNotEmpty()) {
@@ -107,7 +163,7 @@ class InspectionMapViewModel @Inject constructor(
             }
             current.copy(
                 routePoints = points + loc,
-                pointCount = points.size + 1,
+                pointCount = pointOrder,
                 distanceMeters = distance,
                 userLatitude = loc.latitude,
                 userLongitude = loc.longitude,
@@ -135,6 +191,7 @@ class InspectionMapViewModel @Inject constructor(
 
     companion object {
         private const val EARTH_RADIUS_M = 6_371_000.0
+        private const val MAX_WALKING_SPEED_MS = 15.0
 
         fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
             val dLat = Math.toRadians(lat2 - lat1)
