@@ -12,7 +12,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.sge.finca.ui.screens.animals.AnimalMapScreen
+import com.sge.finca.ui.screens.animals.AnimalMapViewModel
 import com.sge.finca.ui.screens.animals.RegisterAnimalScreen
+import com.sge.finca.ui.screens.animals.RegisterAnimalViewModel
 import com.sge.finca.ui.screens.auth.LoginScreen
 import com.sge.finca.ui.screens.auth.LoginScreenViewModel
 import com.sge.finca.ui.screens.auth.RegisterScreen
@@ -22,6 +24,7 @@ import com.sge.finca.ui.screens.contacts.ContactsScreen
 import com.sge.finca.ui.screens.home.HomeScreen
 import com.sge.finca.ui.screens.inspections.InspectionHistoryScreen
 import com.sge.finca.ui.screens.inspections.InspectionMapScreen
+import com.sge.finca.ui.screens.inspections.InspectionMapViewModel
 import com.sge.finca.ui.screens.more.MoreScreen
 import com.sge.finca.ui.screens.more.MoreViewModel
 import com.sge.finca.ui.screens.splash.SplashScreen
@@ -120,12 +123,16 @@ fun AppNavigation(
             )
         }
         composable(Screen.InspectionMap.route) {
+            val inspectionViewModel: InspectionMapViewModel = hiltViewModel()
             InspectionMapScreen(
+                viewModel = inspectionViewModel,
                 onNavigateToHistory = { navController.navigate(Screen.InspectionHistory.route) },
             )
         }
         composable(Screen.AnimalMap.route) {
+            val animalMapViewModel: AnimalMapViewModel = hiltViewModel()
             AnimalMapScreen(
+                viewModel = animalMapViewModel,
                 onNavigateToRegister = { navController.navigate(Screen.RegisterAnimal.route) },
             )
         }
@@ -181,7 +188,11 @@ fun AppNavigation(
             InspectionHistoryScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.RegisterAnimal.route) {
-            RegisterAnimalScreen(onNavigateBack = { navController.popBackStack() })
+            val registerAnimalViewModel: RegisterAnimalViewModel = hiltViewModel()
+            RegisterAnimalScreen(
+                viewModel = registerAnimalViewModel,
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
         composable(Screen.Contacts.route) {
             ContactsScreen(onNavigateBack = { navController.popBackStack() })

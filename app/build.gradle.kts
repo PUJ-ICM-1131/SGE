@@ -22,6 +22,9 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders["MAPS_API_KEY"] =
+            providers.gradleProperty("MAPS_API_KEY").getOrElse("")
     }
 
     buildTypes {
@@ -83,9 +86,9 @@ dependencies {
     // implementation(libs.firebase.messaging)
 
     // Maps & Location
-    // implementation(libs.play.services.maps)
-    // implementation(libs.maps.compose)
-    // implementation(libs.play.services.location)
+    implementation(libs.play.services.maps)
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.location)
 
     // Room
     // implementation(libs.room.runtime)
@@ -107,10 +110,10 @@ dependencies {
     // implementation(libs.camerax.view)
 
     // Runtime permissions
-    // implementation(libs.accompanist.permissions)
+    implementation(libs.accompanist.permissions)
 
     // Coroutines for Play Services
-    // implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // Testing
     testImplementation(libs.junit)
