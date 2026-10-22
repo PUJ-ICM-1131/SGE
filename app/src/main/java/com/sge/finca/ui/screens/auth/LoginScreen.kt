@@ -18,9 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginScreen(
@@ -91,13 +89,4 @@ fun LoginScreen(
             Text("¿No tienes cuenta? Regístrate")
         }
     }
-}
-
-@Composable
-@Preview(showBackground = true)
-fun LoginScreenPreview() {
-    LoginScreen(
-        loginScreenViewModel = viewModel(),
-        onNavigateToRegister = {},
-    )
 }

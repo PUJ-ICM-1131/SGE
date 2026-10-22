@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -16,6 +16,7 @@ import com.sge.finca.ui.screens.animals.RegisterAnimalScreen
 import com.sge.finca.ui.screens.auth.LoginScreen
 import com.sge.finca.ui.screens.auth.LoginScreenViewModel
 import com.sge.finca.ui.screens.auth.RegisterScreen
+import com.sge.finca.ui.screens.auth.RegisterViewModel
 import com.sge.finca.ui.screens.categories.CategoriesScreen
 import com.sge.finca.ui.screens.contacts.ContactsScreen
 import com.sge.finca.ui.screens.home.HomeScreen
@@ -46,7 +47,7 @@ fun AppNavigation(
     ) {
         // Auth
         composable(Screen.Login.route) {
-            val loginScreenViewModel: LoginScreenViewModel = viewModel()
+            val loginScreenViewModel: LoginScreenViewModel = hiltViewModel()
             val loginState by loginScreenViewModel.uiState.collectAsState()
 
             // El ViewModel decide (flag navigate); AppNavigation es quien navega.
@@ -64,13 +65,20 @@ fun AppNavigation(
             )
         }
         composable(Screen.Register.route) {
-            RegisterScreen(
-                onNavigateToLogin = { navController.popBackStack() },
-                onRegisterSuccess = {
+            val registerViewModel: RegisterViewModel = hiltViewModel()
+            val registerState by registerViewModel.uiState.collectAsState()
+
+            LaunchedEffect(registerState.navigate) {
+                if (registerState.navigate) {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
-                },
+                }
+            }
+
+            RegisterScreen(
+                registerViewModel = registerViewModel,
+                onNavigateToLogin = { navController.popBackStack() },
             )
         }
 
