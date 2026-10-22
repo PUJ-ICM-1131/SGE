@@ -23,6 +23,9 @@ interface InspectionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPoint(point: RoutePointEntity)
 
+    @Query("SELECT COUNT(*) FROM route_points WHERE routeId = :routeId")
+    suspend fun countPoints(routeId: String): Int
+
     @Query(
         "UPDATE inspection_routes SET status = :status, endTime = :endTime, " +
             "totalDistanceMeters = :distance, pointCount = :pointCount WHERE id = :routeId",
