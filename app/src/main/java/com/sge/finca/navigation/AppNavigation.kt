@@ -23,6 +23,7 @@ import com.sge.finca.ui.screens.categories.CategoriesScreen
 import com.sge.finca.ui.screens.contacts.ContactsScreen
 import com.sge.finca.ui.screens.home.HomeScreen
 import com.sge.finca.ui.screens.inspections.InspectionHistoryScreen
+import com.sge.finca.ui.screens.inspections.InspectionHistoryViewModel
 import com.sge.finca.ui.screens.inspections.InspectionMapScreen
 import com.sge.finca.ui.screens.inspections.InspectionMapViewModel
 import com.sge.finca.ui.screens.more.MoreScreen
@@ -185,7 +186,11 @@ fun AppNavigation(
             WorkersScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.InspectionHistory.route) {
-            InspectionHistoryScreen(onNavigateBack = { navController.popBackStack() })
+            val historyViewModel: InspectionHistoryViewModel = hiltViewModel()
+            InspectionHistoryScreen(
+                viewModel = historyViewModel,
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
         composable(Screen.RegisterAnimal.route) {
             val registerAnimalViewModel: RegisterAnimalViewModel = hiltViewModel()
