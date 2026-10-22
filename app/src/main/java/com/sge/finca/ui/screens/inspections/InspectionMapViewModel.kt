@@ -10,8 +10,11 @@ import com.sge.finca.platform.location.LocationState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -30,6 +33,9 @@ class InspectionMapViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(InspectionMapUiState())
     val uiState: StateFlow<InspectionMapUiState> = _uiState.asStateFlow()
+
+    private val _gpsLostEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val gpsLostEvent: SharedFlow<Unit> = _gpsLostEvent.asSharedFlow()
 
     private var trackingJob: Job? = null
     private var timerJob: Job? = null
@@ -131,6 +137,7 @@ class InspectionMapViewModel @Inject constructor(
         gpsWatchdogJob = viewModelScope.launch {
             delay(GPS_SIGNAL_TIMEOUT_MS)
             _uiState.update { it.copy(hasGpsSignal = false) }
+            _gpsLostEvent.tryEmit(Unit)
         }
     }
 
