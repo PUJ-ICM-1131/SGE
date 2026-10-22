@@ -23,12 +23,8 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val localProps = rootProject.file("local.properties")
-        val mapsKey = if (localProps.exists()) {
-            java.util.Properties().apply { localProps.inputStream().use(::load) }
-                .getProperty("MAPS_API_KEY", "")
-        } else ""
-        manifestPlaceholders["MAPS_API_KEY"] = mapsKey
+        manifestPlaceholders["MAPS_API_KEY"] =
+            providers.gradleProperty("MAPS_API_KEY").getOrElse("")
     }
 
     buildTypes {
