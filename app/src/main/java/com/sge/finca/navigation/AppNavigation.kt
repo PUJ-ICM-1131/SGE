@@ -23,6 +23,9 @@ import com.sge.finca.ui.screens.home.HomeScreen
 import com.sge.finca.ui.screens.inspections.InspectionHistoryScreen
 import com.sge.finca.ui.screens.inspections.InspectionMapScreen
 import com.sge.finca.ui.screens.more.MoreScreen
+import com.sge.finca.ui.screens.more.MoreViewModel
+import com.sge.finca.ui.screens.splash.SplashScreen
+import com.sge.finca.ui.screens.splash.SplashViewModel
 import com.sge.finca.ui.screens.reminders.RemindersScreen
 import com.sge.finca.ui.screens.reports.ReportsScreen
 import com.sge.finca.ui.screens.settings.SettingsScreen
@@ -42,9 +45,28 @@ fun AppNavigation(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route,
+        startDestination = Screen.Splash.route,
         modifier = modifier,
     ) {
+        // Splash: decide si hay sesión abierta
+        composable(Screen.Splash.route) {
+            val splashViewModel: SplashViewModel = hiltViewModel()
+            val splashState by splashViewModel.uiState.collectAsState()
+
+            LaunchedEffect(splashState.navigateHome, splashState.navigateLogin) {
+                when {
+                    splashState.navigateHome -> navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                    splashState.navigateLogin -> navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            }
+
+            SplashScreen()
+        }
+
         // Auth
         composable(Screen.Login.route) {
             val loginScreenViewModel: LoginScreenViewModel = hiltViewModel()
@@ -108,7 +130,19 @@ fun AppNavigation(
             )
         }
         composable(Screen.More.route) {
+            val moreViewModel: MoreViewModel = hiltViewModel()
+            val moreState by moreViewModel.uiState.collectAsState()
+
+            LaunchedEffect(moreState.navigateLogin) {
+                if (moreState.navigateLogin) {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            }
+
             MoreScreen(
+                moreViewModel = moreViewModel,
                 onNavigateToCategories = { navController.navigate(Screen.Categories.route) },
                 onNavigateToWorkers = { navController.navigate(Screen.Workers.route) },
                 onNavigateToContacts = { navController.navigate(Screen.Contacts.route) },

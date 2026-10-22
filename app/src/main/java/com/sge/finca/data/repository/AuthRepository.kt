@@ -4,11 +4,12 @@ import com.google.firebase.auth.FirebaseUser
 import com.sge.finca.data.datasource.AuthRemoteDataSource
 import jakarta.inject.Inject
 
-class AuthRepository @Inject constructor (
-    private val authRemoteDataSource: AuthRemoteDataSource
+class AuthRepository @Inject constructor(
+    private val authRemoteDataSource: AuthRemoteDataSource,
 ) {
 
-    val currentUser: FirebaseUser? = authRemoteDataSource.currentUser
+    val currentUser: FirebaseUser?
+        get() = authRemoteDataSource.currentUser
 
     suspend fun signIn(email: String, password: String) {
         authRemoteDataSource.signIn(email, password)
@@ -18,9 +19,7 @@ class AuthRepository @Inject constructor (
         authRemoteDataSource.signUp(email, password)
     }
 
-    fun signOut(){
+    fun signOut() {
         authRemoteDataSource.signOut()
     }
-
-
 }
