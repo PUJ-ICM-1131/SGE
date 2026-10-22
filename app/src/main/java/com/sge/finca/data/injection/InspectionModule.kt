@@ -1,10 +1,16 @@
 package com.sge.finca.data.injection
 
-import com.sge.finca.data.repository.InMemoryInspectionRepository
+import android.content.Context
+import androidx.room.Room
+import com.sge.finca.data.local.AppDatabase
+import com.sge.finca.data.local.dao.InspectionDao
+import com.sge.finca.data.repository.RoomInspectionRepository
 import com.sge.finca.domain.repository.InspectionRepository
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -15,6 +21,17 @@ abstract class InspectionModule {
     @Binds
     @Singleton
     abstract fun bindInspectionRepository(
-        impl: InMemoryInspectionRepository,
+        impl: RoomInspectionRepository,
     ): InspectionRepository
+
+    companion object {
+        @Provides
+        @Singleton
+        fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
+            Room.databaseBuilder(context, AppDatabase::class.java, "sge_database")
+                .build()
+
+        @Provides
+        fun provideInspectionDao(db: AppDatabase): InspectionDao = db.inspectionDao()
+    }
 }
