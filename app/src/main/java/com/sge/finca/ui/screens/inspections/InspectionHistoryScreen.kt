@@ -36,6 +36,7 @@ import java.util.Locale
 fun InspectionHistoryScreen(
     viewModel: InspectionHistoryViewModel,
     onNavigateBack: () -> Unit,
+    onRouteClick: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -74,7 +75,7 @@ fun InspectionHistoryScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(state.routes, key = { it.id }) { route ->
-                    RouteCard(route)
+                    RouteCard(route, onClick = { onRouteClick(route.id) })
                 }
             }
         }
@@ -82,8 +83,8 @@ fun InspectionHistoryScreen(
 }
 
 @Composable
-private fun RouteCard(route: InspectionRoute) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun RouteCard(route: InspectionRoute, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = formatDate(route.startTime),

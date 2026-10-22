@@ -22,6 +22,8 @@ import com.sge.finca.ui.screens.auth.RegisterViewModel
 import com.sge.finca.ui.screens.categories.CategoriesScreen
 import com.sge.finca.ui.screens.contacts.ContactsScreen
 import com.sge.finca.ui.screens.home.HomeScreen
+import com.sge.finca.ui.screens.inspections.InspectionDetailScreen
+import com.sge.finca.ui.screens.inspections.InspectionDetailViewModel
 import com.sge.finca.ui.screens.inspections.InspectionHistoryScreen
 import com.sge.finca.ui.screens.inspections.InspectionHistoryViewModel
 import com.sge.finca.ui.screens.inspections.InspectionMapScreen
@@ -189,6 +191,19 @@ fun AppNavigation(
             val historyViewModel: InspectionHistoryViewModel = hiltViewModel()
             InspectionHistoryScreen(
                 viewModel = historyViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onRouteClick = { routeId ->
+                    navController.navigate(Screen.InspectionDetail.createRoute(routeId))
+                },
+            )
+        }
+        composable(
+            route = Screen.InspectionDetail.route,
+            arguments = listOf(navArgument("routeId") { type = NavType.StringType }),
+        ) {
+            val detailViewModel: InspectionDetailViewModel = hiltViewModel()
+            InspectionDetailScreen(
+                viewModel = detailViewModel,
                 onNavigateBack = { navController.popBackStack() },
             )
         }
