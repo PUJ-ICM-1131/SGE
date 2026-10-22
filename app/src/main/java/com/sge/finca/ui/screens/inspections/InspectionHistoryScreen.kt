@@ -96,7 +96,6 @@ private fun RouteCard(route: InspectionRoute) {
             ) {
                 StatLabel("Distancia", formatDistance(route.totalDistanceMeters))
                 StatLabel("Duración", formatDuration(route))
-                StatLabel("Puntos", "${route.pointCount}")
             }
         }
     }
