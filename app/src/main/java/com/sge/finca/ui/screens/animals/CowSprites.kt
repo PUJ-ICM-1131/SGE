@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.sge.finca.R
 
 /**
  * Poses de la vaca. Cada una es una fila de la hoja de sprites res/drawable-nodpi/cow_sheet.png
@@ -39,9 +38,9 @@ class CowSprites private constructor(
         private const val COLUMNS = 4
         private const val ROWS = 2
 
-        fun load(context: Context, widthPx: Int): CowSprites {
+        fun load(context: Context, widthPx: Int, variant: CowVariant = CowVariant.HOLSTEIN): CowSprites {
             val options = BitmapFactory.Options().apply { inScaled = false }
-            val sheet = BitmapFactory.decodeResource(context.resources, R.drawable.cow_sheet, options)
+            val sheet = BitmapFactory.decodeResource(context.resources, variant.sheetRes, options)
             val cellW = sheet.width / COLUMNS
             val cellH = sheet.height / ROWS
             val heightPx = widthPx * cellH / cellW

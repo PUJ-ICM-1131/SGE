@@ -96,7 +96,7 @@ fun AnimalMapScreen(
                             cameraPositionState.animate(
                                 CameraUpdateFactory.newLatLngZoom(
                                     LatLng(state.userLatitude, state.userLongitude),
-                                    16f,
+                                    18f, // zoom inicial: más alto = más cerca (15 calle, 18 cuadra, 20 edificio)
                                 ),
                             )
                         }
@@ -110,14 +110,15 @@ fun AnimalMapScreen(
                     ) {
                         val context = LocalContext.current
                         val density = LocalDensity.current
-                        val sprites = remember {
-                            CowSprites.load(context, with(density) { 88.dp.roundToPx() })
+                        val spritesByVariant = remember {
+                            val widthPx = with(density) { 48.dp.roundToPx() }
+                            CowVariant.entries.associateWith { CowSprites.load(context, widthPx, it) }
                         }
                         state.animals.forEach { tracked ->
                             key(tracked.animal.id) {
                                 AnimalMarker(
                                     tracked = tracked,
-                                    sprites = sprites,
+                                    sprites = spritesByVariant.getValue(CowVariant.fromId(tracked.animal.variant)),
                                     onClick = { viewModel.onAnimalSelected(tracked.animal.id) },
                                 )
                             }

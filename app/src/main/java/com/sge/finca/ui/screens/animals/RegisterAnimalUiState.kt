@@ -3,6 +3,7 @@ package com.sge.finca.ui.screens.animals
 data class RegisterAnimalUiState(
     val name: String = "",
     val notes: String = "",
+    val variant: CowVariant = CowVariant.HOLSTEIN,
     /** URI local (FileProvider) de la foto; null si aún no hay. */
     val photoUri: String? = null,
     val latitude: Double? = null,

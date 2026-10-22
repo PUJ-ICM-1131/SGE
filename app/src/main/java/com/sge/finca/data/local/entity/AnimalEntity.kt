@@ -14,6 +14,7 @@ data class AnimalEntity(
     val longitude: Double,
     val locationAccuracy: Float?,
     val createdAt: Long,
+    val variant: Int = 0,
 ) {
     fun toDomain() = Animal(
         id = id,
@@ -24,6 +25,7 @@ data class AnimalEntity(
         longitude = longitude,
         locationAccuracy = locationAccuracy,
         createdAt = createdAt,
+        variant = variant,
     )
 
     companion object {
@@ -36,6 +38,7 @@ data class AnimalEntity(
             longitude = animal.longitude,
             locationAccuracy = animal.locationAccuracy,
             createdAt = animal.createdAt,
+            variant = animal.variant,
         )
     }
 }

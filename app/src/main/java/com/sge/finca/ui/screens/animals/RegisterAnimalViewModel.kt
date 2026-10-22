@@ -54,6 +54,10 @@ class RegisterAnimalViewModel @Inject constructor(
         _uiState.update { it.copy(name = value, errorMessage = null) }
     }
 
+    fun onVariantSelected(variant: CowVariant) {
+        _uiState.update { it.copy(variant = variant) }
+    }
+
     fun onNotesChanged(value: String) {
         _uiState.update { it.copy(notes = value) }
     }
@@ -140,6 +144,7 @@ class RegisterAnimalViewModel @Inject constructor(
                         longitude = lng,
                         locationAccuracy = s.locationAccuracy,
                         createdAt = System.currentTimeMillis(),
+                        variant = s.variant.id,
                     ),
                 )
                 _uiState.update { it.copy(isSaving = false, saveSuccess = true) }

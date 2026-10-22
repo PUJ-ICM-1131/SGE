@@ -1,5 +1,6 @@
 package com.sge.finca.ui.screens.animals
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,7 @@ import java.util.Locale
 fun AnimalListScreen(
     viewModel: AnimalListViewModel,
     onNavigateBack: () -> Unit,
+    onAnimalClick: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -76,7 +78,7 @@ fun AnimalListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(state.animals, key = { it.animal.id }) { tracked ->
-                    AnimalListItem(tracked)
+                    AnimalListItem(tracked, onClick = { onAnimalClick(tracked.animal.id) })
                 }
             }
         }
@@ -84,9 +86,9 @@ fun AnimalListScreen(
 }
 
 @Composable
-private fun AnimalListItem(tracked: TrackedAnimal) {
+private fun AnimalListItem(tracked: TrackedAnimal, onClick: () -> Unit) {
     val animal = tracked.animal
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,

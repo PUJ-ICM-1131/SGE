@@ -10,4 +10,6 @@ data class Animal(
     val longitude: Double = 0.0,
     val locationAccuracy: Float? = null,
     val createdAt: Long = 0L,
+    /** Apariencia de la vaca (id de CowVariant). */
+    val variant: Int = 0,
 )

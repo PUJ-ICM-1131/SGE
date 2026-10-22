@@ -135,6 +135,12 @@ fun RegisterAnimalScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    CowVariantPicker(
+                        selected = state.variant,
+                        onSelected = viewModel::onVariantSelected,
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     OutlinedTextField(
                         value = state.name,
                         onValueChange = viewModel::onNameChanged,

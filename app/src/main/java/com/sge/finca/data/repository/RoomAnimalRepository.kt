@@ -20,4 +20,14 @@ class RoomAnimalRepository @Inject constructor(
     override suspend fun saveAnimal(animal: Animal) {
         dao.insertAnimal(AnimalEntity.fromDomain(animal))
     }
+
+    override suspend fun getAnimal(id: String): Animal? = dao.getById(id)?.toDomain()
+
+    override suspend fun updateAnimal(animal: Animal) {
+        dao.updateAnimal(AnimalEntity.fromDomain(animal))
+    }
+
+    override suspend fun deleteAnimal(id: String) {
+        dao.deleteById(id)
+    }
 }
