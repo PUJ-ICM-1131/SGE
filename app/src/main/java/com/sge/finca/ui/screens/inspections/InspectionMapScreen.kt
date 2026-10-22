@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -103,7 +105,7 @@ fun InspectionMapScreen(
                             TrackingStatsOverlay(
                                 elapsedSeconds = state.elapsedSeconds,
                                 distanceMeters = state.distanceMeters,
-                                pointCount = state.pointCount,
+                                hasGpsSignal = state.hasGpsSignal,
                                 isPaused = state.isPaused,
                                 modifier = Modifier.align(Alignment.TopCenter),
                             )
@@ -131,7 +133,7 @@ fun InspectionMapScreen(
 private fun TrackingStatsOverlay(
     elapsedSeconds: Long,
     distanceMeters: Double,
-    pointCount: Int,
+    hasGpsSignal: Boolean,
     isPaused: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -155,8 +157,28 @@ private fun TrackingStatsOverlay(
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             StatItem("Tiempo", formatDuration(elapsedSeconds))
             StatItem("Distancia", formatDistance(distanceMeters))
-            StatItem("Puntos", "$pointCount")
+            GpsIndicator(hasSignal = hasGpsSignal)
         }
+    }
+}
+
+@Composable
+private fun GpsIndicator(hasSignal: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(
+                    color = if (hasSignal) Color(0xFF4CAF50) else Color(0xFFF44336),
+                    shape = CircleShape,
+                ),
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "GPS",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
