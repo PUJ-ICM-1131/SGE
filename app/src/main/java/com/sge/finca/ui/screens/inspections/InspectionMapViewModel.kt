@@ -191,7 +191,7 @@ class InspectionMapViewModel @Inject constructor(
 
     companion object {
         private const val EARTH_RADIUS_M = 6_371_000.0
-        private const val MAX_WALKING_SPEED_MS = 15.0
+        private const val MAX_WALKING_SPEED_MS = 27.8
 
         fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
             val dLat = Math.toRadians(lat2 - lat1)
