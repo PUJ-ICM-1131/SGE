@@ -13,21 +13,19 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel = viewModel(),
+    loginScreenViewModel: LoginScreenViewModel,
     onNavigateToRegister: () -> Unit,
-    onLoginSuccess: () -> Unit,
 ) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val state by loginScreenViewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -51,7 +49,7 @@ fun LoginScreen(
 
         OutlinedTextField(
             value = state.email,
-            onValueChange = viewModel::onEmailChanged,
+            onValueChange = { loginScreenViewModel.updateEmail(it) },
             label = { Text("Correo electrónico") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -60,16 +58,25 @@ fun LoginScreen(
 
         OutlinedTextField(
             value = state.password,
-            onValueChange = viewModel::onPasswordChanged,
+            onValueChange = { loginScreenViewModel.updatePassword(it) },
             label = { Text("Contraseña") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
         )
+
+        if (state.showErrorMessage) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = state.errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { onLoginSuccess() },
+            onClick = { loginScreenViewModel.loginButtonPress() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
