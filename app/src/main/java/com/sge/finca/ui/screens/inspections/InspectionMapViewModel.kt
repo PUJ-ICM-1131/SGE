@@ -33,6 +33,7 @@ class InspectionMapViewModel @Inject constructor(
 
     private var trackingJob: Job? = null
     private var timerJob: Job? = null
+    private var gpsWatchdogJob: Job? = null
     private var startTimeMs = 0L
     private var accumulatedSeconds = 0L
     private var currentRouteId: String? = null
@@ -79,13 +80,15 @@ class InspectionMapViewModel @Inject constructor(
 
         startTimer()
         startLocationCollection()
+        startGpsWatchdog()
     }
 
     fun onPauseTracking() {
         accumulatedSeconds = _uiState.value.elapsedSeconds
         trackingJob?.cancel()
         timerJob?.cancel()
-        _uiState.update { it.copy(isPaused = true) }
+        gpsWatchdogJob?.cancel()
+        _uiState.update { it.copy(isPaused = true, hasGpsSignal = false) }
     }
 
     fun onResumeTracking() {
@@ -93,13 +96,15 @@ class InspectionMapViewModel @Inject constructor(
         _uiState.update { it.copy(isPaused = false) }
         startTimer()
         startLocationCollection()
+        startGpsWatchdog()
     }
 
     fun onStopTracking() {
         trackingJob?.cancel()
         timerJob?.cancel()
+        gpsWatchdogJob?.cancel()
         val state = _uiState.value
-        _uiState.update { it.copy(isTracking = false, isPaused = false) }
+        _uiState.update { it.copy(isTracking = false, isPaused = false, hasGpsSignal = false) }
 
         viewModelScope.launch {
             currentRouteId?.let { id ->
@@ -112,11 +117,25 @@ class InspectionMapViewModel @Inject constructor(
     private fun startLocationCollection() {
         trackingJob = viewModelScope.launch {
             locationHelper.trackLocation().collect { loc ->
+                _uiState.update { it.copy(hasGpsSignal = true) }
+                resetGpsWatchdog()
                 if (isValidPoint(loc)) {
                     addRoutePoint(loc)
                 }
             }
         }
+    }
+
+    private fun startGpsWatchdog() {
+        gpsWatchdogJob?.cancel()
+        gpsWatchdogJob = viewModelScope.launch {
+            delay(GPS_SIGNAL_TIMEOUT_MS)
+            _uiState.update { it.copy(hasGpsSignal = false) }
+        }
+    }
+
+    private fun resetGpsWatchdog() {
+        startGpsWatchdog()
     }
 
     private fun isValidPoint(loc: LocationState): Boolean {
@@ -187,11 +206,13 @@ class InspectionMapViewModel @Inject constructor(
         super.onCleared()
         trackingJob?.cancel()
         timerJob?.cancel()
+        gpsWatchdogJob?.cancel()
     }
 
     companion object {
         private const val EARTH_RADIUS_M = 6_371_000.0
         private const val MAX_WALKING_SPEED_MS = 27.8
+        private const val GPS_SIGNAL_TIMEOUT_MS = 10_000L
 
         fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
             val dLat = Math.toRadians(lat2 - lat1)
