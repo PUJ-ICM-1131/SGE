@@ -2,12 +2,18 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+
+    // Hilt & KSP
+    alias(libs.plugins.google.ksp)
+    alias(libs.plugins.dagger)
+
     // TODO: uncomment after adding app/google-services.json from Firebase Console
     // alias(libs.plugins.google.services)
 }
 
 android {
     namespace = "com.sge.finca"
+
     compileSdk {
         version = release(37)
     }
@@ -61,6 +67,11 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+
+    // Hilt
+    implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
+    ksp(libs.hilt.compiler)
 
     // --- Dependencies below: uncomment as features are implemented ---
 

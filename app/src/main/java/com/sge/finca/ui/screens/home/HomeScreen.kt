@@ -27,19 +27,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.sge.finca.ui.theme.ExpenseRed
 import com.sge.finca.ui.theme.IncomeGreen
+import com.sge.finca.ui.components.ShakeHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = viewModel(),
+    viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToNewTransaction: () -> Unit,
     onNavigateToReports: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    ShakeHandler(
+        onStart = viewModel::startShakeDetection,
+        onStop = viewModel::stopShakeDetection,
+        onShake = onNavigateToNewTransaction,
+    )
     Scaffold(
         topBar = {
             TopAppBar(
