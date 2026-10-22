@@ -11,6 +11,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.sge.finca.ui.screens.animals.AnimalListScreen
+import com.sge.finca.ui.screens.animals.AnimalListViewModel
 import com.sge.finca.ui.screens.animals.AnimalMapScreen
 import com.sge.finca.ui.screens.animals.AnimalMapViewModel
 import com.sge.finca.ui.screens.animals.RegisterAnimalScreen
@@ -137,6 +139,7 @@ fun AppNavigation(
             AnimalMapScreen(
                 viewModel = animalMapViewModel,
                 onNavigateToRegister = { navController.navigate(Screen.RegisterAnimal.route) },
+                onNavigateToList = { navController.navigate(Screen.AnimalList.route) },
             )
         }
         composable(Screen.More.route) {
@@ -204,6 +207,13 @@ fun AppNavigation(
             val detailViewModel: InspectionDetailViewModel = hiltViewModel()
             InspectionDetailScreen(
                 viewModel = detailViewModel,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(Screen.AnimalList.route) {
+            val animalListViewModel: AnimalListViewModel = hiltViewModel()
+            AnimalListScreen(
+                viewModel = animalListViewModel,
                 onNavigateBack = { navController.popBackStack() },
             )
         }

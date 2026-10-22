@@ -1,6 +1,8 @@
 package com.sge.finca.data.injection
 
 import com.sge.finca.data.repository.RoomAnimalRepository
+import com.sge.finca.data.repository.StationaryAnimalLocationSource
+import com.sge.finca.domain.repository.AnimalLocationSource
 import com.sge.finca.domain.repository.AnimalRepository
 import dagger.Binds
 import dagger.Module
@@ -15,4 +17,8 @@ abstract class AnimalModule {
     @Binds
     @Singleton
     abstract fun bindAnimalRepository(impl: RoomAnimalRepository): AnimalRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAnimalLocationSource(impl: StationaryAnimalLocationSource): AnimalLocationSource
 }
