@@ -13,22 +13,21 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginScreen(
+    loginScreenViewModel: LoginScreenViewModel,
     onNavigateToRegister: () -> Unit,
-    onLoginSuccess: () -> Unit,
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val state by loginScreenViewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -51,8 +50,8 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(48.dp))
 
         OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
+            value = state.email,
+            onValueChange = { loginScreenViewModel.updateEmail(it) },
             label = { Text("Correo electrónico") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -60,17 +59,26 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
+            value = state.password,
+            onValueChange = { loginScreenViewModel.updatePassword(it) },
             label = { Text("Contraseña") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
         )
+
+        if (state.showErrorMessage) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = state.errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { onLoginSuccess() },
+            onClick = { loginScreenViewModel.loginButtonPress() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -83,4 +91,13 @@ fun LoginScreen(
             Text("¿No tienes cuenta? Regístrate")
         }
     }
+}
+
+@Composable
+@Preview(showBackground = true)
+fun LoginScreenPreview() {
+    LoginScreen(
+        loginScreenViewModel = viewModel(),
+        onNavigateToRegister = {},
+    )
 }

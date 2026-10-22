@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.sge.finca.navigation.AppNavigation
 import com.sge.finca.ui.theme.SGEFincaTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,7 +12,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SGEFincaTheme {
-                AppNavigation()
+                FincaApp()
             }
         }
     }

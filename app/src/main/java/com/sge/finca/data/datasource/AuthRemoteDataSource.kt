@@ -1,4 +1,4 @@
-package com.sge.finca.data.dataresource
+package com.sge.finca.data.datasource
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser

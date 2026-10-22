@@ -1,7 +1,7 @@
 package com.sge.finca.data.repository
 
 import com.google.firebase.auth.FirebaseUser
-import com.sge.finca.data.dataresource.AuthRemoteDataSource
+import com.sge.finca.data.datasource.AuthRemoteDataSource
 import jakarta.inject.Inject
 
 class AuthRepository @Inject constructor (
