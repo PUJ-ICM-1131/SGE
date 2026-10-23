@@ -239,6 +239,115 @@ PhotoCapture "1" --> "0..1" ExtractionResult : produce
 PhotoCapture ..> ExtractionStatus : estado
 ```
 
+## Vista de clases implementadas para esta entrega
+
+El diagrama anterior es un **modelo de análisis** y contiene funcionalidades todavía planeadas. Esta vista complementaria representa los modelos y dependencias que hoy intervienen en los mapas de animales y recorridos. `MapboxMapView` y `MapboxRouteMap` son funciones `@Composable`, por lo que no se dibujan como clases. Tampoco se dibuja una interfaz `MapProvider`: aún no existe en el código.
+
+```mermaid
+classDiagram
+direction LR
+
+class Animal {
+    +String id
+    +String name
+    +String notes
+    +String? photoUri
+    +Double latitude
+    +Double longitude
+    +Float? locationAccuracy
+    +Long createdAt
+    +Int variant
+}
+
+class AnimalLocation {
+    +String animalId
+    +Double latitude
+    +Double longitude
+    +Float speedMetersPerSecond
+    +Long timestamp
+}
+
+class TrackedAnimal {
+    +Animal animal
+    +Double latitude
+    +Double longitude
+    +Boolean isMoving
+    +Float speedMetersPerSecond
+}
+
+class InspectionRoute {
+    +String id
+    +String farmId
+    +String userId
+    +Long startTime
+    +Long? endTime
+    +RouteStatus status
+    +Double totalDistanceMeters
+    +Int pointCount
+}
+
+class RoutePoint {
+    +String id
+    +String routeId
+    +Int order
+    +Double latitude
+    +Double longitude
+    +Float accuracy
+    +Long timestamp
+}
+
+class RouteStatus {
+    <<enumeration>>
+    ACTIVE
+    PAUSED
+    COMPLETED
+}
+
+class AnimalRepository {
+    <<interface>>
+    +getAnimals()
+    +saveAnimal(animal)
+    +getAnimal(id)
+    +updateAnimal(animal)
+    +deleteAnimal(id)
+}
+
+class RoomAnimalRepository
+class ObserveTrackedAnimalsUseCase
+class AnimalMapViewModel
+class InspectionRepository {
+    <<interface>>
+    +getRoutes()
+    +getRoutePoints(routeId)
+}
+class InspectionDetailViewModel
+class RouteMapUiState {
+    +LatLng? origin
+    +LatLng? destination
+    +Double? distanceMeters
+    +Double userLatitude
+    +Double userLongitude
+    +Boolean hasUserLocation
+}
+class RouteMapViewModel {
+    +onMapTap(point)
+    +onClearRoute()
+    +haversine(lat1, lon1, lat2, lon2) Double
+}
+
+AnimalRepository <|.. RoomAnimalRepository
+AnimalRepository <-- ObserveTrackedAnimalsUseCase : consulta
+ObserveTrackedAnimalsUseCase <-- AnimalMapViewModel : observa
+Animal "1" <-- "1" TrackedAnimal : contiene
+AnimalLocation ..> TrackedAnimal : aporta posición
+InspectionRoute "1" --> "0..*" RoutePoint : puntos ordenados
+InspectionRoute ..> RouteStatus : estado
+InspectionRepository <-- InspectionDetailViewModel : lee ruta y puntos
+RouteMapViewModel --> RouteMapUiState : publica
+```
+
+**En las pantallas:** `AnimalMapScreen` observa `AnimalMapViewModel` y permite escoger Google Maps o `MapboxMapView`; `InspectionDetailScreen` observa `InspectionDetailViewModel` y permite escoger Google Maps o `MapboxRouteMap`. `RouteMapScreen` observa `RouteMapViewModel`, presenta la medición de dos puntos sobre Google Maps y calcula distancia con Haversine. Los puntos elegidos para medición o visualización no se persisten como nuevas entidades del dominio. `AnimalLocation` describe una fuente futura de ubicación en vivo; actualmente el origen puede devolver la posición registrada del animal.
+
 ## Descripción de las clases
 
 ### Farm *(nueva)*
