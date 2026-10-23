@@ -14,13 +14,22 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.model.CameraPosition
@@ -29,7 +38,9 @@ import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.sge.finca.R
 import com.sge.finca.domain.model.InspectionRoute
+import com.sge.finca.ui.components.MapboxRouteMap
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -41,14 +52,33 @@ fun InspectionDetailScreen(
     onNavigateBack: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val hasMapboxToken = stringResource(R.string.mapbox_access_token).trim().startsWith("pk.")
+    var useMapbox by rememberSaveable { mutableStateOf(false) }
+    var mapboxFailed by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(mapboxFailed) {
+        if (mapboxFailed) {
+            snackbarHostState.showSnackbar("Mapbox no pudo cargar. Se muestra Google Maps.")
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Detalle de Inspección") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                },
+                actions = {
+                    TextButton(
+                        onClick = { useMapbox = !useMapbox },
+                        enabled = hasMapboxToken && !mapboxFailed,
+                    ) {
+                        Text(if (useMapbox) "Google" else "Mapbox")
                     }
                 },
             )
@@ -80,18 +110,28 @@ fun InspectionDetailScreen(
                     }
                 }
 
-                GoogleMap(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    cameraPositionState = cameraPositionState,
-                ) {
-                    if (points.size >= 2) {
-                        Polyline(
-                            points = points,
-                            color = Color(0xFF2E7D32),
-                            width = 8f,
-                        )
+                val mapModifier = Modifier.fillMaxWidth().weight(1f)
+                if (useMapbox && hasMapboxToken && !mapboxFailed) {
+                    MapboxRouteMap(
+                        routePoints = state.points,
+                        onMapLoadError = {
+                            mapboxFailed = true
+                            useMapbox = false
+                        },
+                        modifier = mapModifier,
+                    )
+                } else {
+                    GoogleMap(
+                        modifier = mapModifier,
+                        cameraPositionState = cameraPositionState,
+                    ) {
+                        if (points.size >= 2) {
+                            Polyline(
+                                points = points,
+                                color = Color(0xFF2E7D32),
+                                width = 8f,
+                            )
+                        }
                     }
                 }
 

@@ -22,6 +22,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -71,8 +73,17 @@ fun AnimalMapScreen(
         .trim()
         .startsWith("pk.")
     var useMapbox by rememberSaveable { mutableStateOf(false) }
+    var mapboxFailed by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(mapboxFailed) {
+        if (mapboxFailed) {
+            snackbarHostState.showSnackbar("Mapbox no pudo cargar. Se muestra Google Maps.")
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Mapa de Ganado") },
@@ -82,7 +93,7 @@ fun AnimalMapScreen(
                     }
                     TextButton(
                         onClick = { useMapbox = !useMapbox },
-                        enabled = hasMapboxToken,
+                        enabled = hasMapboxToken && !mapboxFailed,
                     ) {
                         Text(if (useMapbox) "Google" else "Mapbox")
                     }
@@ -104,11 +115,17 @@ fun AnimalMapScreen(
                 onPermissionGranted = {
                     LaunchedEffect(Unit) { viewModel.onPermissionGranted() }
 
-                    if (useMapbox && hasMapboxToken) {
+                    if (useMapbox && hasMapboxToken && !mapboxFailed) {
                         MapboxMapView(
                             hasUserLocation = state.hasUserLocation,
                             userLatitude = state.userLatitude,
                             userLongitude = state.userLongitude,
+                            animals = state.animals,
+                            onAnimalSelected = viewModel::onAnimalSelected,
+                            onMapLoadError = {
+                                mapboxFailed = true
+                                useMapbox = false
+                            },
                         )
                     } else {
                         val cameraPositionState = rememberCameraPositionState()
