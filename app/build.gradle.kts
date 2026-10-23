@@ -87,6 +87,11 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
 
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.firestore)
@@ -115,16 +120,19 @@ dependencies {
     // implementation(libs.okhttp)
 
     // Image loading
-    // implementation(libs.coil.compose)
+    implementation(libs.coil.compose)
 
     // Camera
-    // implementation(libs.camerax.core)
-    // implementation(libs.camerax.camera2)
-    // implementation(libs.camerax.lifecycle)
-    // implementation(libs.camerax.view)
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
 
     // Runtime permissions
     implementation(libs.accompanist.permissions)
+
+    // Biometric authentication (huella dactilar)
+    implementation(libs.androidx.biometric)
 
     // Coroutines for Play Services
     implementation(libs.kotlinx.coroutines.play.services)

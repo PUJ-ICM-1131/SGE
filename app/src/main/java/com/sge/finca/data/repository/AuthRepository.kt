@@ -2,6 +2,7 @@ package com.sge.finca.data.repository
 
 import com.google.firebase.auth.FirebaseUser
 import com.sge.finca.data.datasource.AuthRemoteDataSource
+import com.sge.finca.data.datasource.SessionStatus
 import jakarta.inject.Inject
 
 class AuthRepository @Inject constructor(
@@ -22,4 +23,7 @@ class AuthRepository @Inject constructor(
     fun signOut() {
         authRemoteDataSource.signOut()
     }
+
+    /** Verifica con Firebase que la sesión guardada en el dispositivo sigue siendo válida. */
+    suspend fun validateSession(): SessionStatus = authRemoteDataSource.refreshSession()
 }
