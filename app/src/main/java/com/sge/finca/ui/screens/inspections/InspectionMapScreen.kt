@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +51,7 @@ import com.sge.finca.ui.components.LocationPermissionHandler
 fun InspectionMapScreen(
     viewModel: InspectionMapViewModel,
     onNavigateToHistory: () -> Unit,
+    onNavigateToRouteMap: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -66,6 +68,9 @@ fun InspectionMapScreen(
             TopAppBar(
                 title = { Text("Inspección de Campo") },
                 actions = {
+                    IconButton(onClick = onNavigateToRouteMap) {
+                        Icon(Icons.Default.Straighten, contentDescription = "Medir distancia")
+                    }
                     IconButton(onClick = onNavigateToHistory) {
                         Icon(Icons.Default.History, contentDescription = "Historial")
                     }
