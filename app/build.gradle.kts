@@ -106,16 +106,19 @@ dependencies {
     // implementation(libs.okhttp)
 
     // Image loading
-    // implementation(libs.coil.compose)
+    implementation(libs.coil.compose)
 
     // Camera
-    // implementation(libs.camerax.core)
-    // implementation(libs.camerax.camera2)
-    // implementation(libs.camerax.lifecycle)
-    // implementation(libs.camerax.view)
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
 
     // Runtime permissions
     implementation(libs.accompanist.permissions)
+
+    // Biometric authentication (huella dactilar)
+    implementation(libs.androidx.biometric)
 
     // Coroutines for Play Services
     implementation(libs.kotlinx.coroutines.play.services)
