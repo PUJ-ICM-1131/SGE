@@ -1,12 +1,12 @@
 # Casos de Uso
 ### Sistema de Gestión Económica — Finca Ganadera
-*Versión 3 · 11 de agosto de 2026 — GPS: inspecciones + animales geolocalizados; OCR on-device; Nominatim; UC-20/UC-21*
+*Versión 4 · 23 de octubre de 2026 — opciones Google Maps/Mapbox, detalle de inspección, estilos y acceso biométrico*
 
 ---
 
 ## Diagrama de Casos de Uso
 
-![Diagrama de casos de uso UML](assets/HU_diagram.png)
+![Diagrama de casos de uso UML](assets/diagrama-casos-uso.svg)
 
 <details>
 <summary>Fuente PlantUML</summary>
@@ -30,6 +30,7 @@ rectangle "Sistema de Gestión Económica (SGE)" {
 
   package "Autenticación y Usuarios (Must)" {
     usecase "UC-07: Iniciar sesión" as UC07
+    usecase "Iniciar sesión\ncon huella" as UCBio
     usecase "UC-13: Registrarse" as UC13
     usecase "UC-14: Gestionar\ntrabajadores" as UC14
   }
@@ -46,9 +47,12 @@ rectangle "Sistema de Gestión Económica (SGE)" {
   package "Inspección y Localización (Must)" {
     usecase "UC-15: Iniciar recorrido\nde inspección" as UC15
     usecase "UC-16: Rastrear recorrido\nen tiempo real" as UC16
-    usecase "UC-17: Consultar historial\nde recorridos" as UC17
+    usecase "UC-17: Consultar historial\ny detalle de recorridos" as UC17
+    usecase "Medir distancia\nentre dos puntos" as UCMeasure
     usecase "UC-20: Registrar animal\ncon foto y ubicación" as UC20
     usecase "UC-21: Consultar mapa\nde animales" as UC21
+    usecase "Cambiar proveedor\nGoogle / Mapbox" as UCMaps
+    usecase "Cambiar estilo\nrural / satelital" as UCStyle
   }
 
   package "Reportes (Should)" {
@@ -78,6 +82,7 @@ user --> UC09
 user --> UC15
 user --> UC16
 user --> UC17
+user --> UCMeasure
 user --> UC20
 user --> UC21
 user --> UC18
@@ -99,6 +104,12 @@ UC10 ..> UC11 : <<include>>
 
 UC09 .left.> UC01 : <<extend>>
 UC09 .left.> UC02 : <<extend>>
+UCBio ..> UC07 : <<extend>>
+UCMaps ..> UC21 : <<extend>>
+UCMaps ..> UC17 : <<extend>>
+UCStyle ..> UC21 : <<extend>>
+UCStyle ..> UC17 : <<extend>>
+UCMeasure ..> UC16 : <<extend>>
 
 @enduml
 ```
@@ -125,6 +136,13 @@ UC09 .left.> UC02 : <<extend>>
 | UC-06 → UC-05 | `<<include>>` | Para editar o eliminar, el usuario primero consulta el historial para localizar el registro |
 | UC-09 → UC-10 → UC-11 | `<<include>>` | Cadena obligatoria: capturar foto siempre desencadena extracción OCR, y la extracción siempre pasa por corrección humana |
 | UC-09 → UC-01 / UC-02 | `<<extend>>` | La captura por foto es una vía alternativa (opcional) de registrar una transacción |
+| Inicio con huella → UC-07 | `<<extend>>` | La biometría es opcional y requiere activación previa; si no está disponible, se usa correo y contraseña. |
+| Cambiar proveedor/estilo → UC-17 / UC-21 | `<<extend>>` | En el detalle de inspección y el mapa de animales se puede elegir Google Maps o Mapbox; en Mapbox también se puede alternar entre estilo rural y satelital. |
+| Medir distancia → UC-16 | `<<extend>>` | Desde el mapa de inspección se puede abrir la medición opcional entre dos puntos elegidos sobre Google Maps. |
+
+> **Alcance de la implementación:** Google Maps y Mapbox son alternativas dentro de la app, no actores externos del negocio. La selección de dos puntos en el mapa de animales de Mapbox dibuja un segmento recto; no calcula un trayecto por caminos. La abstracción técnica `MapProvider` todavía no está implementada.
+
+> **Medición:** la pantalla "Medir Distancia" dibuja el segmento geodésico entre origen y destino y calcula su distancia aproximada con Haversine. No ofrece instrucciones de navegación por vías.
 
 ---
 
@@ -295,6 +313,7 @@ UC09 .left.> UC02 : <<extend>>
 
 **Flujos alternativos:**
 - **1a.** Sesión previa activa (token válido) → el sistema salta al paso 5 directamente.
+- **1b.** Si el usuario activó previamente el acceso con huella y existe una sesión válida, la app solicita verificación biométrica al abrir. Si falla o no está disponible, ofrece el inicio con correo y contraseña.
 - **4a.** Credenciales incorrectas → el sistema muestra "Credenciales incorrectas" y permanece en la pantalla de login.
 - **4b.** Sin conexión → el sistema permite acceso con datos locales en caché (modo offline). Las escrituras se sincronizarán al recuperar conexión.
 - **Cerrar sesión:** desde cualquier pantalla, el usuario selecciona "Cerrar sesión" → el sistema cierra la sesión y vuelve al paso 2.
@@ -531,11 +550,19 @@ UC09 .left.> UC02 : <<extend>>
 1. El usuario abre la sección "Historial de recorridos".
 2. El sistema muestra los recorridos ordenados por fecha (más reciente primero), con fecha, distancia y duración.
 3. El usuario selecciona un recorrido.
-4. El sistema muestra el trazado completo sobre el mapa con los puntos GPS y los animales registrados durante ese recorrido.
+4. El sistema muestra el trazado completo sobre el mapa con los puntos GPS registrados y las estadísticas del recorrido.
+
+**Opciones de visualización disponibles en la app:** en el detalle, el usuario puede alternar entre Google Maps y Mapbox. En Mapbox puede cambiar entre estilo rural y satelital. El trazado representa los puntos GPS registrados, no una ruta calculada sobre vías.
 
 **Flujos alternativos:**
 - **2a.** No hay recorridos registrados → el sistema muestra mensaje "No hay recorridos registrados".
 - **2b.** El usuario filtra por rango de fechas → el sistema actualiza la lista.
+
+---
+
+### Función adicional — Medir distancia entre dos puntos
+
+Desde el mapa de inspección, el usuario abre "Medir Distancia", toca una vez para seleccionar el origen y otra para seleccionar el destino. El sistema dibuja el segmento geodésico y muestra la distancia aproximada calculada con Haversine. Un tercer toque comienza una nueva medición; el botón de borrar limpia ambos puntos. Esta medición es independiente de los recorridos GPS guardados (UC-15 a UC-17).
 
 ---
 
@@ -547,22 +574,20 @@ UC09 .left.> UC02 : <<extend>>
 | **Prioridad** | Must |
 | **Actor principal** | Usuario (Propietario o Trabajador) |
 | **Precondición** | El usuario está autenticado; el dispositivo tiene cámara y GPS |
-| **Postcondición** | Se crea un registro de animal con foto, datos y ubicación GPS almacenados |
+| **Postcondición** | Se crea un registro local de animal con nombre, ubicación GPS y foto opcional |
 
 **Flujo principal:**
-1. El usuario selecciona "Registrar animal" (desde la pantalla principal o durante un recorrido de inspección).
-2. El sistema abre la cámara del dispositivo.
-3. El usuario toma la foto del animal.
-4. El sistema captura automáticamente las coordenadas GPS actuales.
-5. El sistema invoca la API Nominatim para obtener el nombre del lugar a partir de las coordenadas (geocoding inverso).
-6. El sistema muestra formulario: nombre/identificador del animal, notas (opcional), ubicación (autocompletada con nombre del lugar).
-7. El usuario completa y confirma.
-8. El sistema persiste el registro localmente y lo sincroniza con Firestore.
+1. El usuario abre "Registrar animal" desde el mapa o la lista.
+2. El sistema intenta obtener la ubicación GPS actual y muestra el formulario.
+3. El usuario escribe el nombre; opcionalmente añade notas y toma una foto con la cámara o elige una imagen de la galería.
+4. El usuario elige una apariencia de vaca y confirma el registro.
+5. El sistema valida nombre y coordenadas GPS y guarda el animal localmente.
 
 **Flujos alternativos:**
-- **2a.** El usuario selecciona una foto existente de la galería en vez de tomar una nueva.
-- **5a.** Sin conexión → el geocoding se omite; se guardan solo las coordenadas. El nombre del lugar se resuelve cuando haya conexión.
-- **4a.** GPS no disponible → el sistema permite registrar sin ubicación, con advertencia.
+- **3a.** El usuario registra el animal sin foto; el campo de foto queda vacío.
+- **5a.** Si faltan nombre o coordenadas GPS, el sistema muestra un error y espera a que se corrija o se obtenga la ubicación.
+
+**Pendiente del diseño original:** geocoding inverso con Nominatim y sincronización del registro con Firestore.
 
 ---
 
@@ -578,14 +603,15 @@ UC09 .left.> UC02 : <<extend>>
 
 **Flujo principal:**
 1. El usuario abre la sección "Mapa de animales".
-2. El sistema muestra Google Maps centrado en la ubicación de la finca.
-3. Los animales registrados aparecen como pins en sus últimas ubicaciones conocidas.
-4. El usuario toca un pin → el sistema muestra miniatura de la foto, nombre, fecha y notas.
-5. El usuario puede tocar "Ver detalle" → se abre la ficha completa del animal.
+2. El sistema muestra el mapa; cuando está disponible, lo centra en la ubicación actual del usuario.
+3. Los animales registrados aparecen como marcadores en sus últimas ubicaciones conocidas.
+4. El usuario toca un marcador → el sistema muestra la foto (si existe), el nombre, el estado de movimiento, las coordenadas y las notas.
 
 **Flujos alternativos:**
-- **3a.** No hay animales registrados → el sistema muestra el mapa vacío con mensaje "No hay animales registrados. Usa 'Registrar animal' para agregar uno."
-- **3b.** El usuario filtra por fecha o nombre → el sistema actualiza los pins visibles.
+- **2a.** El usuario elige Mapbox en lugar de Google Maps → se muestran los animales como marcadores seleccionables; en Mapbox puede cambiar entre estilo rural y satelital.
+- **2b.** Si Mapbox informa un error de carga del estilo, la aplicación muestra un aviso y regresa a Google Maps.
+- **3a.** No hay animales registrados → el sistema muestra el mapa vacío.
+- **3b.** En Mapbox, el usuario toca dos lugares del mapa → se marcan ambos puntos y se dibuja un segmento recto; un tercer toque inicia otra selección.
 
 ---
 
