@@ -30,6 +30,8 @@ import com.sge.finca.ui.screens.inspections.InspectionMapScreen
 import com.sge.finca.ui.screens.inspections.InspectionMapViewModel
 import com.sge.finca.ui.screens.more.MoreScreen
 import com.sge.finca.ui.screens.more.MoreViewModel
+import com.sge.finca.ui.screens.routes.RouteMapScreen
+import com.sge.finca.ui.screens.routes.RouteMapViewModel
 import com.sge.finca.ui.screens.splash.SplashScreen
 import com.sge.finca.ui.screens.splash.SplashViewModel
 import com.sge.finca.ui.screens.reminders.RemindersScreen
@@ -130,6 +132,7 @@ fun AppNavigation(
             InspectionMapScreen(
                 viewModel = inspectionViewModel,
                 onNavigateToHistory = { navController.navigate(Screen.InspectionHistory.route) },
+                onNavigateToRouteMap = { navController.navigate(Screen.RouteMap.route) },
             )
         }
         composable(Screen.AnimalMap.route) {
@@ -204,6 +207,13 @@ fun AppNavigation(
             val detailViewModel: InspectionDetailViewModel = hiltViewModel()
             InspectionDetailScreen(
                 viewModel = detailViewModel,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(Screen.RouteMap.route) {
+            val routeMapViewModel: RouteMapViewModel = hiltViewModel()
+            RouteMapScreen(
+                viewModel = routeMapViewModel,
                 onNavigateBack = { navController.popBackStack() },
             )
         }
