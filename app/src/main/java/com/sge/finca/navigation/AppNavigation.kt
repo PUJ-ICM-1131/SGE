@@ -19,6 +19,7 @@ import com.sge.finca.ui.screens.animals.AnimalMapScreen
 import com.sge.finca.ui.screens.animals.AnimalMapViewModel
 import com.sge.finca.ui.screens.animals.RegisterAnimalScreen
 import com.sge.finca.ui.screens.animals.RegisterAnimalViewModel
+import com.sge.finca.ui.screens.auth.BiometricPromptHandler
 import com.sge.finca.ui.screens.auth.LoginScreen
 import com.sge.finca.ui.screens.auth.LoginScreenViewModel
 import com.sge.finca.ui.screens.auth.RegisterScreen
@@ -75,6 +76,13 @@ fun AppNavigation(
             }
 
             SplashScreen()
+
+            // Si el usuario activó la huella, muestra el BiometricPrompt sobre el splash.
+            BiometricPromptHandler(
+                show = splashState.showBiometricPrompt,
+                onLaunch = { activity -> splashViewModel.startBiometricPrompt(activity) },
+                onUnavailable = { splashViewModel.onPromptUnavailable() },
+            )
         }
 
         // Auth

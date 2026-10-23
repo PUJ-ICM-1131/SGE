@@ -158,6 +158,14 @@ fun RegisterScreen(
             Text("¿Ya tienes cuenta? Inicia sesión")
         }
     }
+
+    // Tras crear la cuenta: ¿activar el inicio rápido con huella?
+    if (state.showBiometricOffer) {
+        BiometricOfferDialog(
+            onAccept = { activity -> registerViewModel.onBiometricOfferAccepted(activity) },
+            onDecline = { registerViewModel.onBiometricOfferDeclined() },
+        )
+    }
 }
 
 @Composable

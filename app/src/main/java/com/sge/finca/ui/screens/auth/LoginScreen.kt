@@ -47,6 +47,15 @@ fun LoginScreen(
         )
         Spacer(modifier = Modifier.height(48.dp))
 
+        if (state.notice.isNotEmpty()) {
+            Text(
+                text = state.notice,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         OutlinedTextField(
             value = state.email,
             onValueChange = { loginScreenViewModel.updateEmail(it) },
@@ -88,5 +97,13 @@ fun LoginScreen(
         TextButton(onClick = onNavigateToRegister) {
             Text("¿No tienes cuenta? Regístrate")
         }
+    }
+
+    // Tras un login correcto: ¿activar el inicio rápido con huella?
+    if (state.showBiometricOffer) {
+        BiometricOfferDialog(
+            onAccept = { activity -> loginScreenViewModel.onBiometricOfferAccepted(activity) },
+            onDecline = { loginScreenViewModel.onBiometricOfferDeclined() },
+        )
     }
 }

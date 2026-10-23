@@ -1,5 +1,6 @@
 package com.sge.finca.ui.screens.auth
 
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.FirebaseNetworkException
@@ -7,6 +8,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.sge.finca.data.repository.AuthRepository
+import com.sge.finca.platform.biometric.BiometricSetup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -18,6 +20,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val biometricSetup: BiometricSetup,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegisterState())
@@ -95,7 +98,13 @@ class RegisterViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 authRepository.signUp(s.email.trim(), s.password)
-                _uiState.update { it.copy(isLoading = false, navigate = true) }
+                // Cuenta creada: se ofrece activar la huella (si aplica) antes de ir al Home.
+                val uid = authRepository.currentUser?.uid
+                if (uid != null && biometricSetup.shouldOfferActivation(uid)) {
+                    _uiState.update { it.copy(isLoading = false, showBiometricOffer = true) }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, navigate = true) }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -108,6 +117,24 @@ class RegisterViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** El usuario aceptó el diálogo: se confirma con una huella y se activa. */
+    fun onBiometricOfferAccepted(activity: FragmentActivity) {
+        val uid = authRepository.currentUser?.uid
+        _uiState.update { it.copy(showBiometricOffer = false) }
+        if (uid == null) {
+            _uiState.update { it.copy(navigate = true) }
+            return
+        }
+        biometricSetup.enableWithConfirmation(activity, uid) { _ ->
+            _uiState.update { it.copy(navigate = true) }
+        }
+    }
+
+    fun onBiometricOfferDeclined() {
+        authRepository.currentUser?.uid?.let { biometricSetup.declineOffer(it) }
+        _uiState.update { it.copy(showBiometricOffer = false, navigate = true) }
     }
 
     private fun showError(message: String) {

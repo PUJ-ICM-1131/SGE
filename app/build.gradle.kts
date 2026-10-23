@@ -112,6 +112,9 @@ dependencies {
     // Runtime permissions
     implementation(libs.accompanist.permissions)
 
+    // Biometric authentication (huella dactilar)
+    implementation(libs.androidx.biometric)
+
     // Coroutines for Play Services
     implementation(libs.kotlinx.coroutines.play.services)
 
