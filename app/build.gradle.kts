@@ -1,3 +1,6 @@
+import java.io.StringReader
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -7,6 +10,14 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
 }
+
+val mapboxAccessToken: String = Properties().apply {
+    val contents = providers.fileContents(
+        rootProject.layout.projectDirectory.file("local.properties")
+    ).asText.orElse("").get()
+
+    load(StringReader(contents))
+}.getProperty("MAPBOX_ACCESS_TOKEN", "")
 
 android {
     namespace = "com.sge.finca"
@@ -22,6 +33,8 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        resValue("string", "mapbox_access_token", mapboxAccessToken)
 
         manifestPlaceholders["MAPS_API_KEY"] =
             providers.gradleProperty("MAPS_API_KEY").getOrElse("")
@@ -43,6 +56,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
 }
 
@@ -54,7 +68,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
 
-    // Compose (BOM-managed)
+    // Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
@@ -80,8 +94,6 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics)
 
-    // --- Descomenta a medida que implementes cada función ---
-
     // implementation(libs.firebase.storage)
     // implementation(libs.firebase.messaging)
 
@@ -89,6 +101,8 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.maps.compose)
     implementation(libs.play.services.location)
+    implementation(libs.mapbox.maps)
+    implementation(libs.mapbox.compose)
 
     // Room
     implementation(libs.room.runtime)
