@@ -11,10 +11,15 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.sge.finca.ui.screens.animals.AnimalDetailScreen
+import com.sge.finca.ui.screens.animals.AnimalDetailViewModel
+import com.sge.finca.ui.screens.animals.AnimalListScreen
+import com.sge.finca.ui.screens.animals.AnimalListViewModel
 import com.sge.finca.ui.screens.animals.AnimalMapScreen
 import com.sge.finca.ui.screens.animals.AnimalMapViewModel
 import com.sge.finca.ui.screens.animals.RegisterAnimalScreen
 import com.sge.finca.ui.screens.animals.RegisterAnimalViewModel
+import com.sge.finca.ui.screens.auth.BiometricPromptHandler
 import com.sge.finca.ui.screens.auth.LoginScreen
 import com.sge.finca.ui.screens.auth.LoginScreenViewModel
 import com.sge.finca.ui.screens.auth.RegisterScreen
@@ -73,6 +78,13 @@ fun AppNavigation(
             }
 
             SplashScreen()
+
+            // Si el usuario activó la huella, muestra el BiometricPrompt sobre el splash.
+            BiometricPromptHandler(
+                show = splashState.showBiometricPrompt,
+                onLaunch = { activity -> splashViewModel.startBiometricPrompt(activity) },
+                onUnavailable = { splashViewModel.onPromptUnavailable() },
+            )
         }
 
         // Auth
@@ -140,6 +152,7 @@ fun AppNavigation(
             AnimalMapScreen(
                 viewModel = animalMapViewModel,
                 onNavigateToRegister = { navController.navigate(Screen.RegisterAnimal.route) },
+                onNavigateToList = { navController.navigate(Screen.AnimalList.route) },
             )
         }
         composable(Screen.More.route) {
@@ -214,6 +227,24 @@ fun AppNavigation(
             val routeMapViewModel: RouteMapViewModel = hiltViewModel()
             RouteMapScreen(
                 viewModel = routeMapViewModel,
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(Screen.AnimalList.route) {
+            val animalListViewModel: AnimalListViewModel = hiltViewModel()
+            AnimalListScreen(
+                viewModel = animalListViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onAnimalClick = { id -> navController.navigate(Screen.AnimalDetail.createRoute(id)) },
+            )
+        }
+        composable(
+            route = Screen.AnimalDetail.route,
+            arguments = listOf(navArgument("animalId") { type = NavType.StringType }),
+        ) {
+            val animalDetailViewModel: AnimalDetailViewModel = hiltViewModel()
+            AnimalDetailScreen(
+                viewModel = animalDetailViewModel,
                 onNavigateBack = { navController.popBackStack() },
             )
         }

@@ -10,4 +10,8 @@ data class LoginState(
     val errorMessage: String = "",
     val showErrorMessage: Boolean = false,
     val navigate: Boolean = false,
+    /** Aviso informativo (no es un error), p. ej. "Tu sesión expiró". Vacío si no hay. */
+    val notice: String = "",
+    /** true mientras se muestra el diálogo "¿Activar inicio rápido con huella?". */
+    val showBiometricOffer: Boolean = false,
 )

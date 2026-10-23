@@ -16,4 +16,6 @@ data class RegisterState(
     val showErrorMessage: Boolean = false,
     val isLoading: Boolean = false,
     val navigate: Boolean = false,
+    /** true mientras se muestra el diálogo "¿Activar inicio rápido con huella?". */
+    val showBiometricOffer: Boolean = false,
 )

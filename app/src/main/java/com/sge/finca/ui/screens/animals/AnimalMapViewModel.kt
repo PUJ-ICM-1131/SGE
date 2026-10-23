@@ -2,6 +2,7 @@ package com.sge.finca.ui.screens.animals
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sge.finca.domain.usecase.ObserveTrackedAnimalsUseCase
 import com.sge.finca.platform.location.LocationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,10 +15,20 @@ import javax.inject.Inject
 @HiltViewModel
 class AnimalMapViewModel @Inject constructor(
     private val locationHelper: LocationHelper,
+    private val observeTrackedAnimals: ObserveTrackedAnimalsUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnimalMapUiState())
     val uiState: StateFlow<AnimalMapUiState> = _uiState.asStateFlow()
+
+    init {
+        // Se actualiza solo: al registrar un animal o cuando llegue una posición en vivo
+        viewModelScope.launch {
+            observeTrackedAnimals().collect { animals ->
+                _uiState.update { it.copy(animals = animals) }
+            }
+        }
+    }
 
     fun onPermissionGranted() {
         viewModelScope.launch {
@@ -32,5 +43,13 @@ class AnimalMapViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun onAnimalSelected(id: String) {
+        _uiState.update { it.copy(selectedAnimalId = id) }
+    }
+
+    fun onSelectionCleared() {
+        _uiState.update { it.copy(selectedAnimalId = null) }
     }
 }

@@ -10,6 +10,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Arquitectura: estilo MVVM + Clean Architecture ligera, ADRs (framework, BD, backend/sync), diagramas C4 (Paso 5).
 - CI: validación de diagramas Mermaid de `docs/` con mermaid-cli (el job Android se agregará cuando exista código en `src/`).
 - Pipeline de render de diagramas: `scripts/render-diagrams.sh` genera SVG desde los bloques PlantUML de `docs/` (Smetana, sin Graphviz) y el CI verifica sintaxis y frescura de los SVG commiteados vía checksum de la fuente.
+- Autenticación biométrica (huella dactilar) con `BiometricPrompt`: inicio rápido al abrir la app cuando hay sesión de Firebase, oferta de activación tras el primer login/registro y toggle en Configuración. La huella no reemplaza a Firebase Auth: si la sesión expiró se piden las credenciales completas.
 
 ### Changed
 - Diagramas C4 v2: migrados de la sintaxis experimental C4 de Mermaid a C4-PlantUML, con SVG embebido visible en GitHub y fuente colapsada.
