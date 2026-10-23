@@ -37,6 +37,9 @@ sealed class Screen(val route: String) {
         fun createRoute(routeId: String) = "inspection_detail/$routeId"
     }
 
+    // Routes
+    data object RouteMap : Screen("route_map")
+
     // Animals
     data object RegisterAnimal : Screen("register_animal")
 
