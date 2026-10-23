@@ -22,7 +22,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,12 +34,14 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,9 +54,11 @@ import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+import com.sge.finca.R
 import com.sge.finca.domain.model.TrackedAnimal
 import com.sge.finca.ui.components.AnimalAvatar
 import com.sge.finca.ui.components.LocationPermissionHandler
+import com.sge.finca.ui.components.MapboxMapView
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,14 +69,33 @@ fun AnimalMapScreen(
     onNavigateToList: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val hasMapboxToken = stringResource(R.string.mapbox_access_token)
+        .trim()
+        .startsWith("pk.")
+    var useMapbox by rememberSaveable { mutableStateOf(false) }
+    var mapboxFailed by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(mapboxFailed) {
+        if (mapboxFailed) {
+            snackbarHostState.showSnackbar("Mapbox no pudo cargar. Se muestra Google Maps.")
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Mapa de Ganado") },
                 actions = {
                     IconButton(onClick = onNavigateToList) {
                         Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Lista de animales")
+                    }
+                    TextButton(
+                        onClick = { useMapbox = !useMapbox },
+                        enabled = hasMapboxToken && !mapboxFailed,
+                    ) {
+                        Text(if (useMapbox) "Google" else "Mapbox")
                     }
                 },
             )
@@ -89,38 +115,52 @@ fun AnimalMapScreen(
                 onPermissionGranted = {
                     LaunchedEffect(Unit) { viewModel.onPermissionGranted() }
 
-                    val cameraPositionState = rememberCameraPositionState()
+                    if (useMapbox && hasMapboxToken && !mapboxFailed) {
+                        MapboxMapView(
+                            hasUserLocation = state.hasUserLocation,
+                            userLatitude = state.userLatitude,
+                            userLongitude = state.userLongitude,
+                            animals = state.animals,
+                            onAnimalSelected = viewModel::onAnimalSelected,
+                            onMapLoadError = {
+                                mapboxFailed = true
+                                useMapbox = false
+                            },
+                        )
+                    } else {
+                        val cameraPositionState = rememberCameraPositionState()
 
-                    LaunchedEffect(state.hasUserLocation) {
-                        if (state.hasUserLocation) {
-                            cameraPositionState.animate(
-                                CameraUpdateFactory.newLatLngZoom(
-                                    LatLng(state.userLatitude, state.userLongitude),
-                                    18f, // zoom inicial: más alto = más cerca (15 calle, 18 cuadra, 20 edificio)
-                                ),
-                            )
-                        }
-                    }
-
-                    GoogleMap(
-                        modifier = Modifier.fillMaxSize(),
-                        cameraPositionState = cameraPositionState,
-                        properties = MapProperties(isMyLocationEnabled = true),
-                        onMapClick = { viewModel.onSelectionCleared() },
-                    ) {
-                        val context = LocalContext.current
-                        val density = LocalDensity.current
-                        val spritesByVariant = remember {
-                            val widthPx = with(density) { 48.dp.roundToPx() }
-                            CowVariant.entries.associateWith { CowSprites.load(context, widthPx, it) }
-                        }
-                        state.animals.forEach { tracked ->
-                            key(tracked.animal.id) {
-                                AnimalMarker(
-                                    tracked = tracked,
-                                    sprites = spritesByVariant.getValue(CowVariant.fromId(tracked.animal.variant)),
-                                    onClick = { viewModel.onAnimalSelected(tracked.animal.id) },
+                        LaunchedEffect(state.hasUserLocation) {
+                            if (state.hasUserLocation) {
+                                cameraPositionState.animate(
+                                    CameraUpdateFactory.newLatLngZoom(
+                                        LatLng(state.userLatitude, state.userLongitude),
+                                        18f, // zoom inicial: más alto = más cerca (15 calle, 18 cuadra, 20 edificio)
+                                    ),
                                 )
+                            }
+                        }
+
+                        GoogleMap(
+                            modifier = Modifier.fillMaxSize(),
+                            cameraPositionState = cameraPositionState,
+                            properties = MapProperties(isMyLocationEnabled = true),
+                            onMapClick = { viewModel.onSelectionCleared() },
+                        ) {
+                            val context = LocalContext.current
+                            val density = LocalDensity.current
+                            val spritesByVariant = remember {
+                                val widthPx = with(density) { 48.dp.roundToPx() }
+                                CowVariant.entries.associateWith { CowSprites.load(context, widthPx, it) }
+                            }
+                            state.animals.forEach { tracked ->
+                                key(tracked.animal.id) {
+                                    AnimalMarker(
+                                        tracked = tracked,
+                                        sprites = spritesByVariant.getValue(CowVariant.fromId(tracked.animal.variant)),
+                                        onClick = { viewModel.onAnimalSelected(tracked.animal.id) },
+                                    )
+                                }
                             }
                         }
                     }
