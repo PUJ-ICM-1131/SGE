@@ -2,7 +2,8 @@ package com.sge.finca.ui.screens.animals
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sge.finca.domain.usecase.ObserveTrackedAnimalsUseCase
+import com.sge.finca.domain.model.TrackedAnimal
+import com.sge.finca.domain.repository.AnimalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +14,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AnimalListViewModel @Inject constructor(
-    private val observeTrackedAnimals: ObserveTrackedAnimalsUseCase,
+    private val animalRepository: AnimalRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnimalListUiState())
@@ -21,8 +22,21 @@ class AnimalListViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            observeTrackedAnimals().collect { animals ->
-                _uiState.update { it.copy(animals = animals, isLoading = false) }
+            animalRepository.getAnimals().collect { animals ->
+                _uiState.update {
+                    it.copy(
+                        animals = animals.map { animal ->
+                            TrackedAnimal(
+                                animal = animal,
+                                latitude = animal.latitude,
+                                longitude = animal.longitude,
+                                isMoving = false,
+                                speedMetersPerSecond = 0f,
+                            )
+                        },
+                        isLoading = false,
+                    )
+                }
             }
         }
     }

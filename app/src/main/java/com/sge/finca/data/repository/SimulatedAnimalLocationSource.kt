@@ -35,6 +35,8 @@ class SimulatedAnimalLocationSource @Inject constructor(
     private data class Walker(val animal: Animal, var lat: Double, var lng: Double, var heading: Double)
 
     private fun simulate(animals: List<Animal>): Flow<Map<String, AnimalLocation>> = flow {
+        // La lista puede mostrarse sin esperar el primer movimiento simulado.
+        emit(emptyMap())
         val walkers = animals.map { Walker(it, it.latitude, it.longitude, Random.nextDouble(0.0, 2 * PI)) }
         while (true) {
             delay(TICK_MILLIS)

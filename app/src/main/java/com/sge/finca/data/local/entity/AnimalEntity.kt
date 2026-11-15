@@ -2,9 +2,10 @@ package com.sge.finca.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Index
 import com.sge.finca.domain.model.Animal
 
-@Entity(tableName = "animals")
+@Entity(tableName = "animals", indices = [Index("ownerUid")])
 data class AnimalEntity(
     @PrimaryKey val id: String,
     val name: String,
@@ -15,6 +16,7 @@ data class AnimalEntity(
     val locationAccuracy: Float?,
     val createdAt: Long,
     val variant: Int = 0,
+    val ownerUid: String? = null,
 ) {
     fun toDomain() = Animal(
         id = id,
@@ -29,7 +31,7 @@ data class AnimalEntity(
     )
 
     companion object {
-        fun fromDomain(animal: Animal) = AnimalEntity(
+        fun fromDomain(animal: Animal, ownerUid: String) = AnimalEntity(
             id = animal.id,
             name = animal.name,
             notes = animal.notes,
@@ -39,6 +41,7 @@ data class AnimalEntity(
             locationAccuracy = animal.locationAccuracy,
             createdAt = animal.createdAt,
             variant = animal.variant,
+            ownerUid = ownerUid,
         )
     }
 }
