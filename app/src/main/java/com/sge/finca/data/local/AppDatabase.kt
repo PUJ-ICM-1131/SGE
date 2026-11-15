@@ -12,7 +12,7 @@ import com.sge.finca.data.local.entity.RoutePointEntity
 
 @Database(
     entities = [InspectionRouteEntity::class, RoutePointEntity::class, AnimalEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,5 +42,13 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE `animals` ADD COLUMN `variant` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+/** Los registros anteriores no contienen información que permita identificar a su creador. */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `animals` ADD COLUMN `ownerUid` TEXT")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_animals_ownerUid` ON `animals` (`ownerUid`)")
     }
 }
