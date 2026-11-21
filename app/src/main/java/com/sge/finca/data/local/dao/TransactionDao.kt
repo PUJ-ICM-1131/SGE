@@ -1,0 +1,62 @@
+package com.sge.finca.data.local.dao
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import com.sge.finca.data.local.entity.TransactionEntity
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface TransactionDao {
+
+    @Query(
+        "SELECT * FROM transactions WHERE farmId = :farmId " +
+            "ORDER BY dateEpochDay DESC, createdAt DESC"
+    )
+    fun observeByFarm(farmId: String): Flow<List<TransactionEntity>>
+
+    /**
+     * Historial con filtros opcionales: un parámetro en null no filtra.
+     * [type] es el nombre del enum ("INCOME"/"EXPENSE"). Rango de fechas inclusivo.
+     */
+    @Query(
+        "SELECT * FROM transactions WHERE farmId = :farmId " +
+            "AND (:fromDay IS NULL OR dateEpochDay >= :fromDay) " +
+            "AND (:toDay IS NULL OR dateEpochDay <= :toDay) " +
+            "AND (:type IS NULL OR type = :type) " +
+            "AND (:categoryId IS NULL OR categoryId = :categoryId) " +
+            "ORDER BY dateEpochDay DESC, createdAt DESC"
+    )
+    fun observeFiltered(
+        farmId: String,
+        fromDay: Long?,
+        toDay: Long?,
+        type: String?,
+        categoryId: String?,
+    ): Flow<List<TransactionEntity>>
+
+    @Query("SELECT * FROM transactions WHERE id = :id AND farmId = :farmId LIMIT 1")
+    suspend fun getById(farmId: String, id: String): TransactionEntity?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insert(transaction: TransactionEntity)
+
+    /** Para escribir lo que llega de Firestore (issue #32). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(transactions: List<TransactionEntity>)
+
+    @Update
+    suspend fun update(transaction: TransactionEntity)
+
+    /** Solo marca SYNCED si la fila no cambió desde que se envió (mismo updatedAt). */
+    @Query(
+        "UPDATE transactions SET syncStatus = 'SYNCED' " +
+            "WHERE id = :id AND farmId = :farmId AND updatedAt = :updatedAt"
+    )
+    suspend fun markSynced(farmId: String, id: String, updatedAt: Long)
+
+    @Query("DELETE FROM transactions WHERE id = :id AND farmId = :farmId")
+    suspend fun delete(farmId: String, id: String)
+}

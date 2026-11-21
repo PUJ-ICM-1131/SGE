@@ -14,6 +14,13 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE farmId = :farmId ORDER BY type, name COLLATE NOCASE")
     fun observeByFarm(farmId: String): Flow<List<CategoryEntity>>
 
+    /** [type] es el nombre del enum ("INCOME"/"EXPENSE"). */
+    @Query(
+        "SELECT * FROM categories WHERE farmId = :farmId AND type = :type " +
+                "ORDER BY name COLLATE NOCASE"
+    )
+    fun observeByFarmAndType(farmId: String, type: String): Flow<List<CategoryEntity>>
+
     @Query("SELECT * FROM categories WHERE farmId = :farmId")
     suspend fun getByFarm(farmId: String): List<CategoryEntity>
 
@@ -34,6 +41,9 @@ interface CategoryDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(category: CategoryEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(categories: List<CategoryEntity>)
 
     @Update
     suspend fun update(category: CategoryEntity)

@@ -3,6 +3,9 @@ package com.sge.finca.data.local.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.sge.finca.data.local.SyncStatus
+import com.sge.finca.domain.model.Category
+import com.sge.finca.domain.model.TransactionType
 
 @Entity(
     tableName = "categories",
@@ -15,7 +18,15 @@ data class CategoryEntity(
     val farmId: String,
     val name: String,
     val normalizedName: String,
-    val type: String,
+    val type: TransactionType,
     val isDefault: Boolean,
-    val syncStatus: String = "PENDING"
-)
+    val syncStatus: SyncStatus = SyncStatus.PENDING
+) {
+    fun toDomain() = Category(
+        id = id,
+        farmId = farmId,
+        name = name,
+        type = type,
+        isDefault = isDefault,
+    )
+}
