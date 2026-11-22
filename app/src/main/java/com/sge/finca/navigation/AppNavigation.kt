@@ -147,8 +147,15 @@ fun AppNavigation(
                         restoreState = true
                     }
                 },
+                // Tocar una reciente (#33): el propietario va directo a editarla; el trabajador,
+                // que no puede editar (#28), va al detalle.
                 onNavigateToTransaction = { id ->
-                    navController.navigate(Screen.TransactionDetail.createRoute(id))
+                    val route = if (session.can(Permission.EDIT_TRANSACTION)) {
+                        Screen.EditTransaction.createRoute(id)
+                    } else {
+                        Screen.TransactionDetail.createRoute(id)
+                    }
+                    navController.navigate(route)
                 },
             )
         }

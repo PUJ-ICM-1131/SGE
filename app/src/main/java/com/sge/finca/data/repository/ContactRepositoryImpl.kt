@@ -1,15 +1,13 @@
 package com.sge.finca.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.sge.finca.data.injection.ApplicationScope
 import com.sge.finca.data.local.SyncStatus
 import com.sge.finca.data.local.dao.FarmContactDao
+import com.sge.finca.data.local.dao.PendingDeleteDao
+import com.sge.finca.data.local.entity.PendingDeleteEntity
 import com.sge.finca.data.local.entity.FarmContactEntity
 import com.sge.finca.data.remote.FirestorePaths
-import com.sge.finca.data.remote.deleteDocument
-import com.sge.finca.data.remote.pushDocument
-import com.sge.finca.data.remote.toFirestore
+import com.sge.finca.data.sync.SyncScheduler
 import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.model.FarmContact
 import com.sge.finca.domain.repository.ContactRepository
@@ -17,17 +15,16 @@ import com.sge.finca.domain.repository.SessionRepository
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Singleton
 class ContactRepositoryImpl @Inject constructor(
     private val dao: FarmContactDao,
-    private val firestore: FirebaseFirestore,
+    private val pendingDeleteDao: PendingDeleteDao,
+    private val syncScheduler: SyncScheduler,
     private val auth: FirebaseAuth,
     private val sessionRepository: SessionRepository,
-    @ApplicationScope private val scope: CoroutineScope,
 ) : ContactRepository {
 
     override fun observeContacts(farmId: String): Flow<List<FarmContact>> {
@@ -64,7 +61,7 @@ class ContactRepositoryImpl @Inject constructor(
             updatedAt = now,
         )
         dao.insert(entity)
-        push(entity)
+        syncScheduler.requestSync()
         return entity.id
     }
 
@@ -84,24 +81,25 @@ class ContactRepositoryImpl @Inject constructor(
             syncStatus = SyncStatus.PENDING,
         )
         dao.update(updated)
-        push(updated)
+        syncScheduler.requestSync()
     }
 
     override suspend fun delete(farmId: String, id: String) {
         sessionRepository.requirePermission(farmId, Permission.MANAGE_CONTACTS)
+        // Primero se anota el borrado pendiente: si la app se cierra justo aquí, igual se envía.
+        pendingDeleteDao.insert(
+            PendingDeleteEntity(
+                path = FirestorePaths.contact(farmId, id),
+                farmId = farmId,
+                collection = FirestorePaths.CONTACTS,
+                docId = id,
+                createdAt = System.currentTimeMillis(),
+            )
+        )
         dao.delete(farmId, id)
-        firestore.deleteDocument(FirestorePaths.contact(farmId, id))
+        syncScheduler.requestSync()
     }
 
-    private fun push(entity: FarmContactEntity) {
-        firestore.pushDocument(
-            path = FirestorePaths.contact(entity.farmId, entity.id),
-            data = entity.toFirestore(),
-            scope = scope,
-        ) {
-            dao.markSynced(entity.farmId, entity.id, entity.updatedAt)
-        }
-    }
 
     private fun String?.cleanOrNull(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
 }

@@ -8,12 +8,14 @@ import com.sge.finca.data.local.dao.AnimalDao
 import com.sge.finca.data.local.dao.CategoryDao
 import com.sge.finca.data.local.dao.FarmContactDao
 import com.sge.finca.data.local.dao.InspectionDao
+import com.sge.finca.data.local.dao.PendingDeleteDao
 import com.sge.finca.data.local.dao.ReminderDao
 import com.sge.finca.data.local.dao.TransactionDao
 import com.sge.finca.data.local.entity.AnimalEntity
 import com.sge.finca.data.local.entity.CategoryEntity
 import com.sge.finca.data.local.entity.FarmContactEntity
 import com.sge.finca.data.local.entity.InspectionRouteEntity
+import com.sge.finca.data.local.entity.PendingDeleteEntity
 import com.sge.finca.data.local.entity.ReminderEntity
 import com.sge.finca.data.local.entity.RoutePointEntity
 import com.sge.finca.data.local.entity.TransactionEntity
@@ -26,9 +28,10 @@ import com.sge.finca.data.local.entity.TransactionEntity
         CategoryEntity::class,
         TransactionEntity::class,
         FarmContactEntity::class,
-        ReminderEntity::class
+        ReminderEntity::class,
+        PendingDeleteEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -38,11 +41,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun farmContactDao(): FarmContactDao
     abstract fun reminderDao(): ReminderDao
+    abstract fun pendingDeleteDao(): PendingDeleteDao
 }
 
 /** Todas las migraciones, en orden. Usar esta lista al construir la base de datos. */
 val ALL_MIGRATIONS: Array<Migration>
-    get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
 /** v1 -> v2: agrega la tabla de animales sin borrar las inspecciones existentes. */
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -204,6 +208,29 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         db.execSQL(
             "CREATE INDEX IF NOT EXISTS `index_reminders_farmId_dueAt` " +
                     "ON `reminders` (`farmId`, `dueAt`)"
+        )
+    }
+}
+
+/**
+ * v6 -> v7 (issue #32): tabla de borrados pendientes de enviar a Firestore.
+ * SyncStatus gana el valor FAILED, pero es la misma columna TEXT: no requiere cambios.
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `pending_deletes` (" +
+                    "`path` TEXT NOT NULL, " +
+                    "`farmId` TEXT NOT NULL, " +
+                    "`collection` TEXT NOT NULL, " +
+                    "`docId` TEXT NOT NULL, " +
+                    "`createdAt` INTEGER NOT NULL, " +
+                    "`failed` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`path`))"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_pending_deletes_farmId` " +
+                    "ON `pending_deletes` (`farmId`)"
         )
     }
 }

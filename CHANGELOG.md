@@ -4,6 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 ### Added
+- Inicio (#33): balance del mes en verde/rojo, tarjetas de ingresos y egresos con flecha y número de movimientos, rol del usuario junto al nombre de la finca, aviso de sincronización y acceso directo a editar una transacción reciente (propietario).
+- Sincronización offline (#32): subida con WorkManager (`SyncWorker`) usando el mismo id en Room y Firestore, reintentos con espera exponencial, estado `FAILED` sin reintentos infinitos cuando las Security Rules rechazan, borrados pendientes (BD v7), listeners Firestore → Room con last-write-wins, y aviso de registros pendientes en el inicio y en el historial.
 - Roles y permisos (#28): propietario y trabajador con tabla única de permisos (`Permission`), sesión con el rol en vivo (`SessionRepository` / `SessionViewModel`), verificación de permisos en los repositorios, opciones de propietario ocultas para el trabajador, rutas restringidas protegidas y Security Rules de Firestore con pruebas en `firebase/`.
 - Modelo de datos (#23): entidades Room de transacciones, contactos y recordatorios (BD v6, migración 5→6 sin pérdida de datos), `syncStatus` en todas las tablas, repositorios con interfaz en dominio y escritura Room → Firestore, estructura de Firestore documentada en `docs/5-modelo-datos/`. Al registrarse con "Crear finca" se crea la finca en Firestore con sus categorías por defecto.
 - Definición del proyecto y requisitos funcionales/no funcionales (Pasos 1-2).

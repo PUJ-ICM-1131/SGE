@@ -26,6 +26,8 @@ data class Transaction(
     val createdByName: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
+    /** Si ya está en Firestore o falta subirla (issue #32). */
+    val syncState: SyncState = SyncState.SYNCED,
 )
 
 /** Datos que escribe el usuario al crear o editar una transacción. */

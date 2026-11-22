@@ -1,17 +1,15 @@
 package com.sge.finca.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.sge.finca.data.injection.ApplicationScope
 import com.sge.finca.data.local.SyncStatus
 import com.sge.finca.data.local.dao.CategoryDao
 import com.sge.finca.data.local.dao.TransactionDao
+import com.sge.finca.data.local.dao.PendingDeleteDao
 import com.sge.finca.data.local.entity.CategoryEntity
+import com.sge.finca.data.local.entity.PendingDeleteEntity
 import com.sge.finca.data.local.entity.TransactionEntity
 import com.sge.finca.data.remote.FirestorePaths
-import com.sge.finca.data.remote.deleteDocument
-import com.sge.finca.data.remote.pushDocument
-import com.sge.finca.data.remote.toFirestore
+import com.sge.finca.data.sync.SyncScheduler
 import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.model.Transaction
 import com.sge.finca.domain.model.TransactionFilter
@@ -21,22 +19,22 @@ import com.sge.finca.domain.repository.TransactionRepository
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * Lecturas desde Room; escrituras en Room y luego a Firestore (write-through, ver ADR-003).
+ * Lecturas desde Room; escrituras en Room como PENDING y luego SyncWorker las sube a Firestore
+ * cuando hay red (write-through, ver ADR-003 e issue #32).
  * Toda la validación se hace aquí, antes de escribir, para que a Firestore llegue data limpia.
  */
 @Singleton
 class TransactionRepositoryImpl @Inject constructor(
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
-    private val firestore: FirebaseFirestore,
+    private val pendingDeleteDao: PendingDeleteDao,
+    private val syncScheduler: SyncScheduler,
     private val auth: FirebaseAuth,
     private val sessionRepository: SessionRepository,
-    @ApplicationScope private val scope: CoroutineScope,
 ) : TransactionRepository {
 
     override fun observeTransactions(
@@ -81,7 +79,7 @@ class TransactionRepositoryImpl @Inject constructor(
             updatedAt = now,
         )
         transactionDao.insert(entity)
-        push(entity)
+        syncScheduler.requestSync()
         return entity.id
     }
 
@@ -107,13 +105,23 @@ class TransactionRepositoryImpl @Inject constructor(
             syncStatus = SyncStatus.PENDING,
         )
         transactionDao.update(updated)
-        push(updated)
+        syncScheduler.requestSync()
     }
 
     override suspend fun delete(farmId: String, id: String) {
         sessionRepository.requirePermission(farmId, Permission.DELETE_TRANSACTION)
+        // Primero se anota el borrado pendiente: si la app se cierra justo aquí, igual se envía.
+        pendingDeleteDao.insert(
+            PendingDeleteEntity(
+                path = FirestorePaths.transaction(farmId, id),
+                farmId = farmId,
+                collection = FirestorePaths.TRANSACTIONS,
+                docId = id,
+                createdAt = System.currentTimeMillis(),
+            )
+        )
         transactionDao.delete(farmId, id)
-        firestore.deleteDocument(FirestorePaths.transaction(farmId, id))
+        syncScheduler.requestSync()
     }
 
     /** Valida las reglas de negocio y devuelve la categoría elegida. */
@@ -128,15 +136,6 @@ class TransactionRepositoryImpl @Inject constructor(
         return category
     }
 
-    private fun push(entity: TransactionEntity) {
-        firestore.pushDocument(
-            path = FirestorePaths.transaction(entity.farmId, entity.id),
-            data = entity.toFirestore(),
-            scope = scope,
-        ) {
-            transactionDao.markSynced(entity.farmId, entity.id, entity.updatedAt)
-        }
-    }
 
     private fun String?.cleanOrNull(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
 

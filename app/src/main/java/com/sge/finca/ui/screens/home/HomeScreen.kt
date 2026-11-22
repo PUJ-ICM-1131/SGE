@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -48,7 +52,10 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.sge.finca.ui.components.ShakeHandler
+import com.sge.finca.ui.components.SyncStatusBanner
 import com.sge.finca.ui.format.Cop
+import com.sge.finca.ui.format.label
+import com.sge.finca.ui.format.movementsLabel
 import com.sge.finca.ui.screens.transactions.TransactionListItem
 import com.sge.finca.ui.theme.ExpenseRed
 import com.sge.finca.ui.theme.IncomeGreen
@@ -87,7 +94,19 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(state.farmName) },
+                // Nombre de la finca y rol del usuario (#33).
+                title = {
+                    Column {
+                        Text(state.farmName.ifBlank { "SGE Finca" })
+                        if (!state.isLoading && !state.noFarm) {
+                            Text(
+                                state.userRole.label(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
                 actions = {
                     // Panel de notificaciones: recordatorios vencidos o de hoy.
                     IconButton(onClick = onNavigateToNotifications) {
@@ -137,6 +156,18 @@ fun HomeScreen(
                     bottom = innerPadding.calculateBottomPadding() + 88.dp, // espacio para el FAB
                 ),
             ) {
+                // Indicador de sincronización (#32): no se muestra si todo está sincronizado.
+                if (state.pendingSyncCount > 0 || state.failedSyncCount > 0) {
+                    item(key = "sync") {
+                        SyncStatusBanner(
+                            pending = state.pendingSyncCount,
+                            failed = state.failedSyncCount,
+                            onRetry = viewModel::retryFailedSync,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                        )
+                    }
+                }
+
                 item(key = "balance") { MonthSummary(state) }
 
                 item(key = "recent-header") {
@@ -201,28 +232,67 @@ private fun MonthSummary(state: HomeUiState) {
                 Text("Balance del mes", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    Cop.format(state.balanceCents),
+                    Cop.format(state.monthlyBalance),
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (state.balanceCents < 0) ExpenseRed else MaterialTheme.colorScheme.primary,
+                    // Verde si el mes va en positivo, rojo si en negativo (#33).
+                    color = when {
+                        state.monthlyBalance > 0 -> IncomeGreen
+                        state.monthlyBalance < 0 -> ExpenseRed
+                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                    },
                 )
             }
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AmountCard("Ingresos", "+" + Cop.format(state.incomeCents), IncomeGreen, Modifier.weight(1f))
-            AmountCard("Egresos", "-" + Cop.format(state.expenseCents), ExpenseRed, Modifier.weight(1f))
+            AmountCard(
+                label = "Ingresos",
+                value = "+" + Cop.format(state.monthlyIncome),
+                count = state.incomeCount,
+                isIncome = true,
+                modifier = Modifier.weight(1f),
+            )
+            AmountCard(
+                label = "Egresos",
+                value = "-" + Cop.format(state.monthlyExpense),
+                count = state.expenseCount,
+                isIncome = false,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
 
 @Composable
-private fun AmountCard(label: String, value: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier) {
+private fun AmountCard(
+    label: String,
+    value: String,
+    count: Int,
+    isIncome: Boolean,
+    modifier: Modifier,
+) {
+    val color = if (isIncome) IncomeGreen else ExpenseRed
     Card(modifier = modifier) {
         Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(label, style = MaterialTheme.typography.labelLarge)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Flecha verde hacia arriba (ingresos) o roja hacia abajo (egresos).
+                Icon(
+                    if (isIncome) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(label, style = MaterialTheme.typography.labelLarge)
+            }
             Spacer(Modifier.height(4.dp))
             Text(value, style = MaterialTheme.typography.titleLarge, color = color)
+            Text(
+                movementsLabel(count),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
