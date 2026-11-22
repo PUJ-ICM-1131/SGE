@@ -13,7 +13,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,7 +49,7 @@ import com.sge.finca.ui.theme.IncomeGreen
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToNewTransaction: () -> Unit,
-    onNavigateToReports: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToTransaction: (String) -> Unit,
 ) {
@@ -65,8 +67,20 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(state.farmName) },
                 actions = {
-                    IconButton(onClick = onNavigateToReports) {
-                        Icon(Icons.Default.BarChart, contentDescription = "Reportes")
+                    // Panel de notificaciones: recordatorios vencidos o de hoy.
+                    IconButton(onClick = onNavigateToNotifications) {
+                        BadgedBox(
+                            badge = {
+                                if (state.notificationCount > 0) {
+                                    Badge { Text(if (state.notificationCount > 9) "9+" else "${state.notificationCount}") }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = "Notificaciones: ${state.notificationCount} pendientes",
+                            )
+                        }
                     }
                 },
             )
