@@ -11,13 +11,24 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
-val mapboxAccessToken: String = Properties().apply {
+// local.properties no se sube al repo: ahí van los tokens y claves de cada desarrollador.
+val localProperties = Properties().apply {
     val contents = providers.fileContents(
         rootProject.layout.projectDirectory.file("local.properties")
     ).asText.orElse("").get()
 
     load(StringReader(contents))
-}.getProperty("MAPBOX_ACCESS_TOKEN", "")
+}
+
+val mapboxAccessToken: String = localProperties.getProperty("MAPBOX_ACCESS_TOKEN", "")
+
+// Proveedor de collares GPS (collar-api/). Sin valores, apunta al servidor local desde el emulador.
+// Retrofit exige que la URL base termine en "/".
+val collarApiBaseUrl: String = localProperties
+    .getProperty("COLLAR_API_BASE_URL", "http://10.0.2.2:8080/")
+    .trim()
+    .let { if (it.endsWith("/")) it else "$it/" }
+val collarApiKey: String = localProperties.getProperty("COLLAR_API_KEY", "sge-dev-key").trim()
 
 android {
     namespace = "com.sge.finca"
@@ -35,6 +46,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         resValue("string", "mapbox_access_token", mapboxAccessToken)
+
+        buildConfigField("String", "COLLAR_API_BASE_URL", "\"$collarApiBaseUrl\"")
+        buildConfigField("String", "COLLAR_API_KEY", "\"$collarApiKey\"")
 
         manifestPlaceholders["MAPS_API_KEY"] =
             providers.gradleProperty("MAPS_API_KEY").getOrElse("")
@@ -114,10 +128,10 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    // Network
-    // implementation(libs.retrofit)
-    // implementation(libs.retrofit.converter.gson)
-    // implementation(libs.okhttp)
+    // Network (proveedor de collares GPS)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
+    implementation(libs.okhttp)
 
     // Image loading
     implementation(libs.coil.compose)

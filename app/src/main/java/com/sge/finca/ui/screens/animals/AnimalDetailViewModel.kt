@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sge.finca.domain.model.Animal
 import com.sge.finca.domain.repository.AnimalRepository
+import com.sge.finca.domain.repository.CollarRepository
 import com.sge.finca.platform.media.ImageStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -21,6 +22,7 @@ import javax.inject.Inject
 class AnimalDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val animalRepository: AnimalRepository,
+    private val collarRepository: CollarRepository,
     private val imageStorage: ImageStorage,
 ) : ViewModel() {
 
@@ -155,6 +157,8 @@ class AnimalDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 animalRepository.deleteAnimal(animalId)
+                // El collar se libera en segundo plano: no hace esperar al usuario si no hay red.
+                collarRepository.releaseCollar(animalId)
                 original?.photoUri?.let { imageStorage.delete(it) }
                 s.photoUri?.takeIf { it != original?.photoUri }?.let { imageStorage.delete(it) }
                 _uiState.update { it.copy(isSaving = false, finished = true) }

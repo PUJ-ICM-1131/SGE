@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SOLO DEBUG: permite HTTP plano para probar el repo sge-collar-api corriendo en el PC
+  (emulador → 10.0.2.2, celular físico → IP del PC en la red local).
+  Las compilaciones release no incluyen este archivo y solo aceptan HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
