@@ -46,6 +46,7 @@ import com.sge.finca.ui.screens.reports.ReportsScreen
 import com.sge.finca.ui.screens.settings.SettingsScreen
 import com.sge.finca.ui.screens.transactions.EditTransactionScreen
 import com.sge.finca.ui.screens.transactions.NewTransactionScreen
+import com.sge.finca.ui.screens.transactions.TransactionDetailScreen
 import com.sge.finca.ui.screens.transactions.TransactionHistoryScreen
 import com.sge.finca.ui.screens.workers.WorkersScreen
 import com.sge.finca.ui.session.SessionViewModel
@@ -137,13 +138,24 @@ fun AppNavigation(
             HomeScreen(
                 onNavigateToNewTransaction = { navController.navigate(Screen.NewTransaction.route) },
                 onNavigateToReports = { navController.navigate(Screen.Reports.route) },
+                // "Ver todo" va a la pestaña Historial igual que la barra inferior.
+                onNavigateToHistory = {
+                    navController.navigate(Screen.TransactionHistory.route) {
+                        popUpTo(Screen.Home.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onNavigateToTransaction = { id ->
+                    navController.navigate(Screen.TransactionDetail.createRoute(id))
+                },
             )
         }
         composable(Screen.TransactionHistory.route) {
             TransactionHistoryScreen(
                 onNavigateToNew = { navController.navigate(Screen.NewTransaction.route) },
-                onNavigateToEdit = { id ->
-                    navController.navigate(Screen.EditTransaction.createRoute(id))
+                onNavigateToDetail = { id ->
+                    navController.navigate(Screen.TransactionDetail.createRoute(id))
                 },
             )
         }
@@ -193,19 +205,26 @@ fun AppNavigation(
             NewTransactionScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(
+            route = Screen.TransactionDetail.route,
+            arguments = listOf(navArgument("transactionId") { type = NavType.StringType }),
+        ) {
+            TransactionDetailScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onEdit = { id -> navController.navigate(Screen.EditTransaction.createRoute(id)) },
+            )
+        }
+        composable(
             route = Screen.EditTransaction.route,
             arguments = listOf(navArgument("transactionId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+        ) {
+            // El ViewModel lee "transactionId" del SavedStateHandle de esta entrada.
+            // Solo el propietario edita transacciones (issue #28).
             PermissionGate(
                 session = session,
                 permission = Permission.EDIT_TRANSACTION,
                 onNavigateBack = { navController.popBackStack() },
             ) {
-                EditTransactionScreen(
-                    transactionId = transactionId,
-                    onNavigateBack = { navController.popBackStack() },
-                )
+                EditTransactionScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
 
