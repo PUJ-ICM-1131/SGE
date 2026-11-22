@@ -19,7 +19,7 @@ data class Session(
 
     val isOwner: Boolean get() = role == FarmRole.OWNER
 
-    fun can(permission: Permission): Boolean = role.can(permission)
+    fun can(permission: Permission): Boolean = role.can(permission, member?.grants.orEmpty())
 
     companion object {
         val Loading = Session(loading = true)
