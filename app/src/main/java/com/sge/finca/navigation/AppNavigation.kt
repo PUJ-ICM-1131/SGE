@@ -185,12 +185,9 @@ fun AppNavigation(
         composable(
             route = Screen.EditTransaction.route,
             arguments = listOf(navArgument("transactionId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
-            EditTransactionScreen(
-                transactionId = transactionId,
-                onNavigateBack = { navController.popBackStack() },
-            )
+        ) {
+            // El ViewModel lee "transactionId" del SavedStateHandle de esta entrada.
+            EditTransactionScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         // Other screens
