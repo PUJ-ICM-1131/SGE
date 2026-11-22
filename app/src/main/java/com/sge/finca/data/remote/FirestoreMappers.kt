@@ -150,6 +150,7 @@ fun AnimalEntity.toFirestore(): Map<String, Any?> = mapOf(
     "variant" to variant,
     "createdBy" to ownerUid,
     "createdAt" to createdAt,
+    "updatedAt" to updatedAt,
 )
 
 fun DocumentSnapshot.toAnimalEntity(farmId: String): AnimalEntity? {
@@ -167,6 +168,8 @@ fun DocumentSnapshot.toAnimalEntity(farmId: String): AnimalEntity? {
         farmId = farmId,
         remotePhotoUrl = getString("remotePhotoUrl"),
         syncStatus = SyncStatus.SYNCED,
+        // Documentos anteriores a #62 no traen updatedAt.
+        updatedAt = getLong("updatedAt") ?: getLong("createdAt") ?: 0L,
     )
 }
 
