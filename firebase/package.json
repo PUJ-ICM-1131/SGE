@@ -3,7 +3,7 @@
   "private": true,
   "description": "Pruebas de las Security Rules de Firestore de SGE (issue #28)",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-sge \"node --test test/\"",
+    "test": "firebase emulators:exec --only firestore --project demo-sge \"node --test\"",
     "deploy": "firebase deploy --only firestore:rules"
   },
   "devDependencies": {

@@ -3,9 +3,8 @@ package com.sge.finca.ui.screens.reminders
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sge.finca.domain.model.Reminder
-import com.sge.finca.domain.model.UserRole
 import com.sge.finca.domain.repository.ReminderRepository
-import com.sge.finca.domain.repository.UserRepository
+import com.sge.finca.domain.repository.SessionRepository
 import com.sge.finca.domain.usecase.ManageRemindersUseCase
 import com.sge.finca.ui.format.ReminderTimeFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -28,7 +28,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RemindersViewModel @Inject constructor(
-    userRepository: UserRepository,
+    sessionRepository: SessionRepository,
     reminderRepository: ReminderRepository,
     private val manageReminders: ManageRemindersUseCase,
 ) : ViewModel() {
@@ -40,18 +40,24 @@ class RemindersViewModel @Inject constructor(
         val reminders: List<Reminder>,
     )
 
-    /** Datos de Room: se actualizan solos al crear, editar, completar o borrar. */
+    /**
+     * Datos de Room: se actualizan solos al crear, editar, completar o borrar.
+     * El rol sale de la membresía de la finca (#28), no del perfil.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val data: Flow<Data> = userRepository.observeCurrentUser().flatMapLatest { user ->
-        val farmId = user?.farmId
-        if (farmId == null) {
-            flowOf(Data(null, user?.uid, false, emptyList()))
-        } else {
-            reminderRepository.observeReminders(farmId).map { reminders ->
-                Data(farmId, user.uid, user.role != UserRole.WORKER, reminders)
+    private val data: Flow<Data> = sessionRepository.session
+        .filter { !it.loading }
+        .flatMapLatest { session ->
+            val farmId = session.farmId
+            if (farmId == null || session.role == null) {
+                // Sin finca o con la membresía inactiva no hay recordatorios que mostrar.
+                flowOf(Data(null, session.uid, false, emptyList()))
+            } else {
+                reminderRepository.observeReminders(farmId).map { reminders ->
+                    Data(farmId, session.uid, session.isOwner, reminders)
+                }
             }
         }
-    }
 
     /** Cada minuto se recalcula qué está vencido, aunque nada cambie en la base. */
     private val clock: Flow<Long> = flow {
@@ -137,6 +143,9 @@ class RemindersViewModel @Inject constructor(
                 throw e
             } catch (e: IllegalArgumentException) {
                 updateEditor { it.copy(isSaving = false, errorMessage = e.message) }
+            } catch (e: SecurityException) {
+                // El repositorio rechazó la escritura por permisos (#28).
+                updateEditor { it.copy(isSaving = false, errorMessage = e.message) }
             } catch (e: Exception) {
                 updateEditor { it.copy(isSaving = false, errorMessage = "No se pudo guardar el recordatorio") }
             }
@@ -179,6 +188,8 @@ class RemindersViewModel @Inject constructor(
             block()
         } catch (e: CancellationException) {
             throw e
+        } catch (e: SecurityException) {
+            ui.update { it.copy(message = e.message ?: errorMessage) }
         } catch (e: Exception) {
             ui.update { it.copy(message = errorMessage) }
         }

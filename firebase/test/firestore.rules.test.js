@@ -163,7 +163,26 @@ test('el trabajador registra animales, inspecciones, contactos y recordatorios',
   await assertSucceeds(setDoc(doc(d, `farms/${FARM}/inspectionRoutes/r1`), { userId: WORKER }));
   await assertSucceeds(setDoc(doc(d, `farms/${FARM}/inspectionRoutes/r1/points/p1`), { order: 0 }));
   await assertSucceeds(setDoc(doc(d, `farms/${FARM}/contacts/k1`), { name: 'Veterinario' }));
-  await assertSucceeds(setDoc(doc(d, `farms/${FARM}/reminders/m1`), { title: 'Vacunar' }));
+  await assertSucceeds(setDoc(doc(d, `farms/${FARM}/reminders/m1`), { title: 'Vacunar', createdBy: WORKER }));
+});
+
+test('recordatorios: elimina el dueño o quien lo creó, y nadie se apropia de uno ajeno (#31)', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const d = ctx.firestore();
+    await setDoc(doc(d, `farms/${FARM}/reminders/del-dueño`), { title: 'Pagar luz', createdBy: OWNER });
+    await setDoc(doc(d, `farms/${FARM}/reminders/del-trab`), { title: 'Comprar sal', createdBy: WORKER });
+    await setDoc(doc(d, `farms/${FARM}/reminders/otro`), { title: 'Revisar cerca', createdBy: OWNER });
+  });
+  const worker = db(WORKER);
+  // No crea a nombre de otro.
+  await assertFails(setDoc(doc(worker, `farms/${FARM}/reminders/m2`), { title: 'X', createdBy: OWNER }));
+  // Completa o edita uno ajeno, pero no lo borra ni cambia su autor.
+  await assertSucceeds(updateDoc(doc(worker, `farms/${FARM}/reminders/del-dueño`), { isCompleted: true }));
+  await assertFails(updateDoc(doc(worker, `farms/${FARM}/reminders/del-dueño`), { createdBy: WORKER }));
+  await assertFails(deleteDoc(doc(worker, `farms/${FARM}/reminders/del-dueño`)));
+  // Borra el suyo; el dueño borra cualquiera.
+  await assertSucceeds(deleteDoc(doc(worker, `farms/${FARM}/reminders/del-trab`)));
+  await assertSucceeds(deleteDoc(doc(db(OWNER), `farms/${FARM}/reminders/otro`)));
 });
 
 test('cada usuario solo ve su propio perfil', async () => {

@@ -127,8 +127,15 @@ service cloud.firestore {
       match /contacts/{docId} {
         allow read, write: if isMember(farmId);
       }
+      // Recordatorios (#31): cualquier miembro crea y edita; eliminar solo el dueño o quien lo
+      // creó, igual que la app. Nadie se apropia de uno ajeno cambiando createdBy.
       match /reminders/{docId} {
-        allow read, write: if isMember(farmId);
+        allow read: if isMember(farmId);
+        allow create: if isMember(farmId)
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update: if isMember(farmId) && !changes().hasAny(['createdBy']);
+        allow delete: if isOwner(farmId)
+          || (isMember(farmId) && resource.data.createdBy == request.auth.uid);
       }
       match /inspectionRoutes/{routeId} {
         allow read, write: if isMember(farmId);
