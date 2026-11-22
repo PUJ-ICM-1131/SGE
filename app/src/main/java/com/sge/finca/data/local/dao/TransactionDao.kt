@@ -13,7 +13,7 @@ interface TransactionDao {
 
     @Query(
         "SELECT * FROM transactions WHERE farmId = :farmId " +
-            "ORDER BY dateEpochDay DESC, createdAt DESC"
+                "ORDER BY dateEpochDay DESC, createdAt DESC"
     )
     fun observeByFarm(farmId: String): Flow<List<TransactionEntity>>
 
@@ -23,11 +23,11 @@ interface TransactionDao {
      */
     @Query(
         "SELECT * FROM transactions WHERE farmId = :farmId " +
-            "AND (:fromDay IS NULL OR dateEpochDay >= :fromDay) " +
-            "AND (:toDay IS NULL OR dateEpochDay <= :toDay) " +
-            "AND (:type IS NULL OR type = :type) " +
-            "AND (:categoryId IS NULL OR categoryId = :categoryId) " +
-            "ORDER BY dateEpochDay DESC, createdAt DESC"
+                "AND (:fromDay IS NULL OR dateEpochDay >= :fromDay) " +
+                "AND (:toDay IS NULL OR dateEpochDay <= :toDay) " +
+                "AND (:type IS NULL OR type = :type) " +
+                "AND (:categoryId IS NULL OR categoryId = :categoryId) " +
+                "ORDER BY dateEpochDay DESC, createdAt DESC"
     )
     fun observeFiltered(
         farmId: String,
@@ -43,6 +43,16 @@ interface TransactionDao {
     /** Detalle: emite null mientras no exista y vuelve a emitir cuando llega o cambia. */
     @Query("SELECT * FROM transactions WHERE id = :id AND farmId = :farmId LIMIT 1")
     fun observeById(farmId: String, id: String): Flow<TransactionEntity?>
+
+    /** Indica si alguna transacción de la finca utiliza esta categoría. */
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM transactions " +
+                "WHERE farmId = :farmId AND categoryId = :categoryId)"
+    )
+    suspend fun hasTransactionsForCategory(
+        farmId: String,
+        categoryId: String,
+    ): Boolean
 
     /** No pisa una fila existente (p. ej. la que acaba de guardar el listener). -1 si ya existía. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -61,7 +71,7 @@ interface TransactionDao {
     /** Solo marca SYNCED si la fila no cambió desde que se envió (mismo updatedAt). */
     @Query(
         "UPDATE transactions SET syncStatus = 'SYNCED' " +
-            "WHERE id = :id AND farmId = :farmId AND updatedAt = :updatedAt"
+                "WHERE id = :id AND farmId = :farmId AND updatedAt = :updatedAt"
     )
     suspend fun markSynced(farmId: String, id: String, updatedAt: Long)
 
@@ -77,7 +87,7 @@ interface TransactionDao {
     /** Firestore la rechazó de forma definitiva. Solo si la fila no cambió mientras se subía. */
     @Query(
         "UPDATE transactions SET syncStatus = 'FAILED' " +
-            "WHERE id = :id AND farmId = :farmId AND updatedAt = :updatedAt"
+                "WHERE id = :id AND farmId = :farmId AND updatedAt = :updatedAt"
     )
     suspend fun markFailed(farmId: String, id: String, updatedAt: Long)
 
