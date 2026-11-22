@@ -49,6 +49,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.sge.finca.ui.components.ShakeHandler
+import com.sge.finca.ui.components.SyncStatusBanner
 import com.sge.finca.ui.format.Cop
 import com.sge.finca.ui.screens.transactions.TransactionListItem
 import com.sge.finca.ui.theme.ExpenseRed
@@ -148,6 +149,18 @@ fun HomeScreen(
                     bottom = innerPadding.calculateBottomPadding() + 88.dp, // espacio para el FAB
                 ),
             ) {
+                // Indicador de sincronización (#32): no se muestra si todo está sincronizado.
+                if (state.syncPending > 0 || state.syncFailed > 0) {
+                    item(key = "sync") {
+                        SyncStatusBanner(
+                            pending = state.syncPending,
+                            failed = state.syncFailed,
+                            onRetry = viewModel::retryFailedSync,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                        )
+                    }
+                }
+
                 item(key = "balance") { MonthSummary(state) }
 
                 item(key = "recent-header") {

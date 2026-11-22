@@ -34,4 +34,29 @@ interface FarmContactDao {
 
     @Query("DELETE FROM farm_contacts WHERE id = :id AND farmId = :farmId")
     suspend fun delete(farmId: String, id: String)
+
+    // ---------- Sincronización (issue #32) ----------
+
+    /** Filas por subir a Firestore (de todas las fincas). */
+    @Query("SELECT * FROM farm_contacts WHERE syncStatus = 'PENDING'")
+    suspend fun getPendingUpload(): List<FarmContactEntity>
+
+    /** Firestore la rechazó de forma definitiva. Solo si la fila no cambió mientras se subía. */
+    @Query(
+        "UPDATE farm_contacts SET syncStatus = 'FAILED' " +
+            "WHERE id = :id AND farmId = :farmId AND updatedAt = :updatedAt"
+    )
+    suspend fun markFailed(farmId: String, id: String, updatedAt: Long)
+
+    /** "Reintentar": las rechazadas vuelven a la cola. */
+    @Query("UPDATE farm_contacts SET syncStatus = 'PENDING' WHERE farmId = :farmId AND syncStatus = 'FAILED'")
+    suspend fun resetFailed(farmId: String)
+
+    /** [status] es el nombre del enum SyncStatus. */
+    @Query("SELECT COUNT(*) FROM farm_contacts WHERE farmId = :farmId AND syncStatus = :status")
+    fun observeCountByStatus(farmId: String, status: String): Flow<Int>
+
+    /** Ids ya sincronizados: sirven para detectar lo que se borró en otro celular. */
+    @Query("SELECT id FROM farm_contacts WHERE farmId = :farmId AND syncStatus = 'SYNCED'")
+    suspend fun getSyncedIds(farmId: String): List<String>
 }

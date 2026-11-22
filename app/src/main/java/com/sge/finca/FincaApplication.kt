@@ -6,6 +6,8 @@ import androidx.work.Configuration
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.sge.finca.data.sync.FarmSyncListener
+import com.sge.finca.data.sync.SyncScheduler
 import com.sge.finca.platform.notifications.PushTokenRegistrar
 import com.sge.finca.platform.notifications.ReminderNotifier
 import com.sge.finca.platform.notifications.TransactionPushNotifier
@@ -29,6 +31,12 @@ class FincaApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var pushTokenRegistrar: PushTokenRegistrar
 
+    @Inject
+    lateinit var farmSyncListener: FarmSyncListener
+
+    @Inject
+    lateinit var syncScheduler: SyncScheduler
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -42,6 +50,10 @@ class FincaApplication : Application(), Configuration.Provider {
         // Guarda el token FCM de este celular cada vez que hay sesión (para los avisos push).
         pushTokenRegistrar.start()
         schedulePhotoCleanup()
+        // Sincronización offline (#32): escucha Firestore -> Room y sube lo pendiente.
+        farmSyncListener.start()
+        syncScheduler.requestSync()
+        syncScheduler.schedulePeriodicSync()
     }
 
     private fun schedulePhotoCleanup() {

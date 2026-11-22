@@ -41,6 +41,13 @@ object FirestorePaths {
     fun reminder(farmId: String, id: String) = "${farm(farmId)}/$REMINDERS/${requireId(id)}"
     fun inspectionRoute(farmId: String, id: String) =
         "${farm(farmId)}/$INSPECTION_ROUTES/${requireId(id)}"
+    /** Subcolección de una finca, p. ej. farms/{farmId}/transactions. */
+    fun farmCollection(farmId: String, collection: String) = "${farm(farmId)}/${requireId(collection)}"
+
+    /** Documento de una subcolección de la finca, p. ej. farms/{farmId}/transactions/{id}. */
+    fun farmDocument(farmId: String, collection: String, id: String) =
+        "${farmCollection(farmId, collection)}/${requireId(id)}"
+
     fun routePoint(farmId: String, routeId: String, pointId: String) =
         "${inspectionRoute(farmId, routeId)}/$POINTS/${requireId(pointId)}"
 

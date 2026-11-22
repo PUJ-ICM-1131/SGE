@@ -12,6 +12,9 @@ data class HomeUiState(
     val recentTransactions: List<Transaction> = emptyList(),
     /** Recordatorios vencidos o que vencen hoy: el número de la campana. */
     val notificationCount: Int = 0,
+    /** Registros sin subir a Firestore y rechazados (issue #32). */
+    val syncPending: Int = 0,
+    val syncFailed: Int = 0,
     val noFarm: Boolean = false,
     val isLoading: Boolean = true,
 )

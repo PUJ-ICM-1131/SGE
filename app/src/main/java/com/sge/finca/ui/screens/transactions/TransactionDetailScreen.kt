@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -81,6 +82,14 @@ fun TransactionDetailScreen(
         val transaction = state.transaction
         when {
             state.isLoading -> CenteredBox(Modifier.padding(innerPadding)) { CircularProgressIndicator() }
+            transaction == null && state.unreachable -> CenteredBox(Modifier.padding(innerPadding)) {
+                Text(
+                    "No se pudo cargar este movimiento. Revisa tu conexión: aparecerá aquí " +
+                        "cuando se sincronice.",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(24.dp),
+                )
+            }
             transaction == null -> CenteredBox(Modifier.padding(innerPadding)) {
                 Text("Este movimiento ya no existe.")
             }

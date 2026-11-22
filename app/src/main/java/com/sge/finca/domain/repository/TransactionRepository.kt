@@ -18,6 +18,18 @@ interface TransactionRepository {
 
     suspend fun getTransaction(farmId: String, id: String): Transaction?
 
+    /** Una sola transacción; emite null mientras no esté en este celular. */
+    fun observeTransaction(farmId: String, id: String): Flow<Transaction?>
+
+    /**
+     * Trae de Firestore una transacción que todavía no está en Room (p. ej. la registró otro
+     * miembro y se abrió desde el aviso push antes de que el listener de #32 la bajara).
+     * No pisa una copia local ni revive una borrada aquí que aún no se ha enviado.
+     * @return true si quedó en Room; false si no existe en el servidor.
+     * @throws Exception sin red, sin permiso o si el servidor no responde a tiempo.
+     */
+    suspend fun pullFromRemote(farmId: String, id: String): Boolean
+
     /**
      * Valida y guarda. Devuelve el id generado.
      * @throws IllegalArgumentException si los datos no son válidos (el mensaje es apto para la UI).
