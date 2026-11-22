@@ -12,4 +12,6 @@ interface FarmRepository {
      * Requiere sesión iniciada y conexión (se llama justo después del registro).
      */
     suspend fun createFarm(farmName: String, ownerName: String): Farm
+
+    suspend fun regenerateInviteCode(farmId: String): String
 }

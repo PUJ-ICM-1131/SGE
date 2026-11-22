@@ -10,9 +10,9 @@ import com.sge.finca.data.remote.toFirestore
 import com.sge.finca.domain.model.Farm
 import com.sge.finca.domain.model.FarmMember
 import com.sge.finca.domain.model.FarmRole
+import com.sge.finca.domain.model.InviteCode
 import com.sge.finca.domain.repository.CategoryRepository
 import com.sge.finca.domain.repository.FarmRepository
-import java.security.SecureRandom
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -51,13 +51,12 @@ class FarmRepositoryImpl @Inject constructor(
             id = UUID.randomUUID().toString(),
             name = cleanName,
             ownerUid = user.uid,
-            inviteCode = generateInviteCode(),
+            inviteCode = InviteCode.generate(),
             createdAt = now,
         )
         val email = user.email ?: ""
         val name = ownerName.trim().ifEmpty { email }
 
-        // Un solo batch: o se crean la finca, la membresía y el perfil, o no se crea nada.
         firestore.batch()
             .set(
                 firestore.document(FirestorePaths.farm(farm.id)),
@@ -98,6 +97,30 @@ class FarmRepositoryImpl @Inject constructor(
         return farm
     }
 
+    override suspend fun regenerateInviteCode(farmId: String): String {
+        val uid = checkNotNull(auth.currentUser?.uid) {
+            "Inicia sesión para regenerar el código"
+        }
+        val farmReference = firestore.document(FirestorePaths.farm(farmId))
+
+        return firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(farmReference)
+            check(snapshot.exists()) { "La finca ya no existe" }
+            check(snapshot.getString("ownerUid") == uid) {
+                "Solo el propietario puede regenerar el código"
+            }
+
+            val previousCode = snapshot.getString("inviteCode")
+            var newCode = InviteCode.generate()
+            while (newCode == previousCode) {
+                newCode = InviteCode.generate()
+            }
+
+            transaction.update(farmReference, "inviteCode", newCode)
+            newCode
+        }.await()
+    }
+
     private fun DocumentSnapshot.toFarm() = Farm(
         id = id,
         name = getString("name") ?: "",
@@ -105,21 +128,4 @@ class FarmRepositoryImpl @Inject constructor(
         inviteCode = getString("inviteCode"),
         createdAt = getLong("createdAt") ?: 0L,
     )
-
-    /**
-     * Código de 6 caracteres sin letras/números confundibles (0/O, 1/I/L).
-     * Con 31^6 ≈ 890 millones de combinaciones una colisión es muy improbable; buscar la finca
-     * por código y manejar ese caso es parte del issue #29.
-     */
-    private fun generateInviteCode(): String {
-        val random = SecureRandom()
-        return (1..INVITE_CODE_LENGTH)
-            .map { INVITE_ALPHABET[random.nextInt(INVITE_ALPHABET.length)] }
-            .joinToString("")
-    }
-
-    private companion object {
-        const val INVITE_CODE_LENGTH = 6
-        const val INVITE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-    }
 }
