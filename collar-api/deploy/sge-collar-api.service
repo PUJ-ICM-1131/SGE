@@ -1,0 +1,39 @@
+[Unit]
+Description=SGE Collar API - proveedor simulado de collares GPS
+Documentation=https://github.com/PUJ-ICM-1131/SGE
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/sge-collar-api
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=3
+
+# Configuración: la clave y el puerto viven en /etc/sge-collar-api/env (solo root la lee).
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=DATA_FILE=/var/lib/sge-collar-api/collars.json
+EnvironmentFile=/etc/sge-collar-api/env
+
+# Usuario efímero sin privilegios; systemd crea /var/lib/sge-collar-api y se lo asigna.
+DynamicUser=yes
+StateDirectory=sge-collar-api
+
+# Endurecimiento. Si en el LXC falla con "226/NAMESPACE", activa nesting=1 en el contenedor.
+# (No usar MemoryDenyWriteExecute: rompe el JIT de Node.)
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

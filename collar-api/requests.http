@@ -1,0 +1,58 @@
+### Pruebas manuales — Android Studio / IntelliJ (HTTP Client) o VS Code (REST Client)
+@baseUrl = http://localhost:8080
+@apiKey = sge-dev-key
+
+### Estado del servicio
+GET {{baseUrl}}/health
+
+### Registrar un collar
+POST {{baseUrl}}/v1/collars
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "serial": "SGE-0001",
+  "farmId": "finca-1",
+  "animalId": "animal-1",
+  "animalName": "Lola",
+  "anchor": { "lat": 4.628, "lng": -74.065 },
+  "radiusMeters": 40
+}
+
+### Listar los collares de la finca
+GET {{baseUrl}}/v1/collars?farmId=finca-1
+X-Api-Key: {{apiKey}}
+
+### Detalle (reemplaza el id por el que devolvió el POST)
+@collarId = pega-aqui-el-id
+GET {{baseUrl}}/v1/collars/{{collarId}}
+X-Api-Key: {{apiKey}}
+
+### Mover el potrero y ampliar el radio
+PATCH {{baseUrl}}/v1/collars/{{collarId}}
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "anchor": { "lat": 4.6285, "lng": -74.0645 },
+  "radiusMeters": 80
+}
+
+### Desactivar el collar (deja de reportar posición)
+PATCH {{baseUrl}}/v1/collars/{{collarId}}
+X-Api-Key: {{apiKey}}
+Content-Type: application/json
+
+{ "status": "INACTIVE" }
+
+### Posición actual de un collar
+GET {{baseUrl}}/v1/collars/{{collarId}}/position
+X-Api-Key: {{apiKey}}
+
+### Posiciones de todas las vacas activas de la finca (lo que consulta la app)
+GET {{baseUrl}}/v1/positions?farmId=finca-1
+X-Api-Key: {{apiKey}}
+
+### Eliminar el collar
+DELETE {{baseUrl}}/v1/collars/{{collarId}}
+X-Api-Key: {{apiKey}}

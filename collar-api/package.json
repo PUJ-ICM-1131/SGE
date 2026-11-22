@@ -1,0 +1,19 @@
+{
+  "name": "sge-collar-api",
+  "version": "1.0.0",
+  "description": "Proveedor externo simulado de collares GPS para el ganado de SGE: CRUD de collares y posición en tiempo real",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
