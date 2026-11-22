@@ -3,11 +3,15 @@ package com.sge.finca.ui.screens.transactions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SyncProblem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.sge.finca.domain.model.SyncState
 import com.sge.finca.domain.model.Transaction
 import com.sge.finca.domain.model.TransactionType
 import com.sge.finca.ui.format.BusinessDateFormat
@@ -45,13 +50,39 @@ fun TransactionListItem(
         headlineContent = { Text(transaction.categoryName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = supporting?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
         trailingContent = {
-            Text(
-                transaction.signedAmount(),
-                style = MaterialTheme.typography.titleMedium,
-                color = color,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    transaction.signedAmount(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = color,
+                )
+                SyncStateIcon(transaction.syncState)
+            }
         },
     )
+}
+
+/**
+ * Reloj si la transacción aún no se sube a Firestore; alerta si Firestore la rechazó.
+ * Nada si ya está sincronizada (issue #32).
+ */
+@Composable
+private fun SyncStateIcon(state: SyncState) {
+    when (state) {
+        SyncState.SYNCED -> Unit
+        SyncState.PENDING -> Icon(
+            Icons.Default.Schedule,
+            contentDescription = "Pendiente de sincronizar",
+            modifier = Modifier.padding(start = 6.dp).size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SyncState.FAILED -> Icon(
+            Icons.Default.SyncProblem,
+            contentDescription = "No se pudo sincronizar",
+            modifier = Modifier.padding(start = 6.dp).size(16.dp),
+            tint = MaterialTheme.colorScheme.error,
+        )
+    }
 }
 
 /** Círculo con flecha: verde hacia arriba para ingreso, roja hacia abajo para egreso. */
