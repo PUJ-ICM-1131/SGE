@@ -1,12 +1,16 @@
 package com.sge.finca.platform.location
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.location.LocationManager
 import android.os.Looper
+import androidx.core.location.LocationManagerCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.Priority
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,9 +25,20 @@ import javax.inject.Singleton
 @Singleton
 class LocationHelper @Inject constructor(
     private val client: FusedLocationProviderClient,
+    @ApplicationContext private val context: Context,
 ) {
     private val _location = MutableStateFlow(LocationState())
     val location: StateFlow<LocationState> = _location.asStateFlow()
+
+    /**
+     * ¿Está activada la ubicación del celular (interruptor de GPS en ajustes rápidos)? Con la
+     * ubicación apagada, pedir la posición no falla: simplemente no devuelve nada.
+     */
+    fun isLocationEnabled(): Boolean {
+        val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            ?: return false
+        return LocationManagerCompat.isLocationEnabled(manager)
+    }
 
     @SuppressLint("MissingPermission")
     suspend fun requestCurrentLocation(): LocationState? {
