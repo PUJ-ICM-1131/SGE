@@ -50,6 +50,9 @@ class MainActivity : FragmentActivity() {
     private fun routeFrom(intent: Intent?): String? =
         when (intent?.getStringExtra(NotificationDestinations.EXTRA_DESTINATION)) {
             NotificationDestinations.REMINDERS -> Screen.Reminders.route
+            NotificationDestinations.TRANSACTION ->
+                intent.getStringExtra(NotificationDestinations.EXTRA_TRANSACTION_ID)
+                    ?.let(Screen.TransactionDetail::createRoute)
             else -> null
         }
 }
