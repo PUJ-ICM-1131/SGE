@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,16 +86,17 @@ fun AnimalMapScreen(
     var useMapbox by rememberSaveable { mutableStateOf(false) }
     var mapboxFailed by remember { mutableStateOf(false) }
 
-    // Lo que tapa la parte de abajo del mapa (#60): el botón de registrar (izquierda) o, con un
-    // animal seleccionado, su tarjeta (todo el ancho; el botón se oculta). El mapa corre su zoom
-    // y los logos de Google/Mapbox fuera de ahí.
+    // Lo que tapa la parte de abajo del mapa (#60): el botón de registrar (abajo a la derecha,
+    // justo donde Google pone el zoom) o, con un animal seleccionado, su tarjeta (todo el ancho;
+    // el botón se oculta). El mapa sube su zoom y sus logos por encima.
     val density = LocalDensity.current
     var infoCardHeight by remember { mutableStateOf(0.dp) }
-    val mapOverlayPadding = if (state.selectedAnimal != null) {
-        PaddingValues(bottom = infoCardHeight)
-    } else {
-        PaddingValues(start = FabClearance)
-    }
+    val bottomCovered = if (state.selectedAnimal != null) infoCardHeight else FabClearance
+    val googlePadding = PaddingValues(bottom = bottomCovered)
+    // El logo y la atribución de Mapbox están a la izquierda: solo los tapa la tarjeta.
+    val mapboxOrnamentPadding = PaddingValues(
+        bottom = if (state.selectedAnimal != null) infoCardHeight else 0.dp,
+    )
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(mapboxFailed) {
@@ -149,8 +149,6 @@ fun AnimalMapScreen(
                 },
             )
         },
-        // Abajo a la izquierda (#60): a la derecha están los controles de zoom de Google Maps.
-        floatingActionButtonPosition = FabPosition.Start,
         floatingActionButton = {
             // Con un animal seleccionado, su tarjeta ocupa el borde inferior: se cierra la
             // tarjeta para volver a ver el botón.
@@ -183,7 +181,7 @@ fun AnimalMapScreen(
                                     useMapbox = false
                                 },
                                 centerRequest = state.centerRequest,
-                                ornamentPadding = mapOverlayPadding,
+                                ornamentPadding = mapboxOrnamentPadding,
                             )
                         } else {
                             val cameraPositionState = rememberCameraPositionState()
@@ -206,8 +204,9 @@ fun AnimalMapScreen(
                                 // El botón propio (#59) reemplaza al de Google, que no avisa si el
                                 // GPS está apagado.
                                 uiSettings = MapUiSettings(myLocationButtonEnabled = false),
-                                // Los términos de Google Maps exigen que el logo se vea.
-                                contentPadding = mapOverlayPadding,
+                                // Sube el zoom (y el logo, que por términos debe verse) por encima
+                                // del botón de registrar o de la tarjeta del animal.
+                                contentPadding = googlePadding,
                                 onMapClick = { viewModel.onSelectionCleared() },
                             ) {
                                 val context = LocalContext.current
@@ -394,5 +393,5 @@ private fun CenterOnMeButton(
     }
 }
 
-/** Ancho que ocupa el botón de registrar abajo a la izquierda: 16 de margen + 56 + 16. */
+/** Alto que ocupa el botón de registrar abajo a la derecha: 16 de margen + 56 + 16. */
 private val FabClearance = 88.dp
