@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.sge.finca.data.local.SyncStatus
+import com.sge.finca.domain.model.SyncState
 import com.sge.finca.domain.model.Transaction
 import com.sge.finca.domain.model.TransactionType
 
@@ -48,6 +49,11 @@ data class TransactionEntity(
         createdByName = createdByName,
         createdAt = createdAt,
         updatedAt = updatedAt,
+        syncState = when (syncStatus) {
+            SyncStatus.SYNCED -> SyncState.SYNCED
+            SyncStatus.PENDING -> SyncState.PENDING
+            SyncStatus.FAILED -> SyncState.FAILED
+        },
     )
 
     companion object {
