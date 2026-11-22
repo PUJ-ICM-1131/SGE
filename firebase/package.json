@@ -1,0 +1,14 @@
+{
+  "name": "sge-firestore-rules",
+  "private": true,
+  "description": "Pruebas de las Security Rules de Firestore de SGE (issue #28)",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-sge \"node --test test/\"",
+    "deploy": "firebase deploy --only firestore:rules"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0",
+    "firebase-tools": "^14.0.0"
+  }
+}
