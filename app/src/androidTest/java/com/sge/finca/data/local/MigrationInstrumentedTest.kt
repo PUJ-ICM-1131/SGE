@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Verifica que las migraciones 5 -> 6 -> 7 no borran datos y que Room acepta el esquema resultante.
+ * Verifica que las migraciones 5 -> 6 -> 7 -> 8 no borran datos y que Room acepta el esquema resultante.
  *
  * No usa MigrationTestHelper (necesita room-testing y exportSchema = true). En su lugar crea a
  * mano una base de datos con el esquema v5, tal como la dejan las migraciones 1..5, y la abre con
@@ -48,9 +48,15 @@ class MigrationInstrumentedTest {
             .build()
         try {
             // Los datos viejos siguen ahí, con valores por defecto en las columnas nuevas.
-            val animal = db.animalDao().getById("animal-1", "uid-1")!!
+            // v8 (#62): el animal viejo no tiene finca hasta que su creador abre una; ahí pasa a
+            // esa finca y queda pendiente de subir. Los de otro usuario no se tocan.
+            assertNull(db.animalDao().getById("finca-1", "animal-1"))
+            assertEquals(0, db.animalDao().claimUnassigned("finca-1", "otro-uid", 2000L))
+            assertEquals(1, db.animalDao().claimUnassigned("finca-1", "uid-1", 2000L))
+            val animal = db.animalDao().getById("finca-1", "animal-1")!!
             assertEquals("Lola", animal.name)
-            assertNull(animal.farmId)
+            assertEquals("finca-1", animal.farmId)
+            assertEquals(2000L, animal.updatedAt)
             assertEquals(SyncStatus.PENDING, animal.syncStatus)
 
             val route = db.inspectionDao().observeRoutes().first().single()

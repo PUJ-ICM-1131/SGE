@@ -64,9 +64,10 @@ erDiagram
         REAL locationAccuracy "opcional"
         INTEGER createdAt
         INTEGER variant
-        TEXT ownerUid "creador"
-        TEXT farmId "null en registros anteriores a v6"
+        TEXT ownerUid "creador (solo informativo)"
+        TEXT farmId "null hasta que su creador abre una finca (#62)"
         TEXT syncStatus
+        INTEGER updatedAt
     }
     inspection_routes {
         TEXT id PK
@@ -146,6 +147,7 @@ Todas en `data/local/AppDatabase.kt` (lista `ALL_MIGRATIONS`). **Nunca** usar
 | 4 → 5 | Tabla `categories` |
 | 5 → 6 | Tablas `transactions`, `farm_contacts`, `reminders`; `syncStatus` en las tablas existentes; `animals.farmId` y `animals.remotePhotoUrl` |
 | 6 → 7 | Tabla `pending_deletes` (borrados por enviar a Firestore) |
+| 7 → 8 | `animals.updatedAt` (los animales se sincronizan con la finca, #62) |
 
 `MigrationInstrumentedTest` crea una base v5 a mano y verifica que la migración conserve los datos y
 que Room acepte el esquema resultante.
@@ -185,7 +187,7 @@ Interfaces en `domain/repository`, implementaciones en `data/repository`, enlaza
 | `ReminderRepository` | `ReminderRepositoryImpl` | Solo datos; las notificaciones son el issue #31 |
 | `FarmRepository` | `FarmRepositoryImpl` | `createFarm` se llama al registrarse con "Crear finca" |
 | `UserRepository` | `UserRepositoryImpl` | `observeCurrentFarmId()` da el `farmId` para los demás repositorios |
-| `AnimalRepository` | `RoomAnimalRepository` | Sin cambios de comportamiento (sigue filtrando por usuario) |
+| `AnimalRepository` | `RoomAnimalRepository` | Animales de la finca activa (#62), sincronizados con `animalRecords`; los registrados antes de #62 pasan a la finca de su creador |
 | `InspectionRepository` | `RoomInspectionRepository` | Sin cambios de comportamiento |
 
 ### Cómo usarlos desde un ViewModel
