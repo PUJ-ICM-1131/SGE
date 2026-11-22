@@ -13,7 +13,7 @@ y [ADR-003](../4-arquitectura/adrs/adr-003-backend-sync.md).
 | Los IDs son **UUID generados en el celular** | La fila de Room y el documento de Firestore comparten id desde el primer momento, sin esperar al servidor |
 | Montos en **centavos enteros** (`amountCents: Long`) | `Double` acumula errores de redondeo en sumas de dinero |
 | La **fecha de negocio** (`dateEpochDay`) va aparte de `createdAt`/`updatedAt` | El usuario puede registrar hoy un gasto de ayer; reportes y filtros usan la fecha de negocio |
-| Cada tabla tiene **`syncStatus`** (`PENDING`/`SYNCED`) | Saber qué filas falta confirmar en Firestore. Reintentarlas es el issue #32 |
+| Cada tabla tiene **`syncStatus`** (`PENDING`/`SYNCED`/`FAILED`) | Saber qué filas falta subir a Firestore y cuáles rechazó (ver "Sincronización offline") |
 | La validación ocurre en el repositorio **antes** de escribir | A Firestore solo llega data limpia |
 
 ### Fechas de negocio
@@ -145,6 +145,7 @@ Todas en `data/local/AppDatabase.kt` (lista `ALL_MIGRATIONS`). **Nunca** usar
 | 3 → 4 | `animals.ownerUid` |
 | 4 → 5 | Tabla `categories` |
 | 5 → 6 | Tablas `transactions`, `farm_contacts`, `reminders`; `syncStatus` en las tablas existentes; `animals.farmId` y `animals.remotePhotoUrl` |
+| 6 → 7 | Tabla `pending_deletes` (borrados por enviar a Firestore) |
 
 `MigrationInstrumentedTest` crea una base v5 a mano y verifica que la migración conserve los datos y
 que Room acepte el esquema resultante.
@@ -248,9 +249,56 @@ try {
 }
 ```
 
+## Sincronización offline (issue #32)
+
+Código en `data/sync/`. Sincroniza **transacciones, categorías, contactos y recordatorios**.
+
+```mermaid
+flowchart LR
+    UI[Pantalla] -->|guardar| Repo[Repositorio]
+    Repo -->|1. fila PENDING| Room[(Room)]
+    Repo -->|2. requestSync| WM[SyncWorker<br/>WorkManager, solo con red]
+    WM -->|3. set con el mismo id| FS[(Firestore)]
+    WM -->|4. SYNCED o FAILED| Room
+    FS -->|snapshot listener| L[FarmSyncListener]
+    L -->|SYNCED, sin crear pendientes| Room
+```
+
+**Subida (Room → Firestore)**
+- Los repositorios guardan en Room como `PENDING` y llaman a `SyncScheduler.requestSync()`.
+- `SyncWorker` (WorkManager) corre **solo con red**, sobrevive al cierre de la app y al reinicio del
+  celular, y sube cada fila con `set` sobre el **mismo id**: repetir una subida no crea duplicados.
+- Al confirmar, la fila pasa a `SYNCED` (solo si no cambió mientras se subía: mismo `updatedAt`).
+- Error de red o tiempo de espera → sigue `PENDING` y WorkManager reintenta con espera exponencial
+  (30 s, 1 min, 2 min…). Además hay un trabajo periódico cada 30 min como respaldo.
+- Rechazo definitivo (Security Rules, datos inválidos) → `FAILED`. **No se reintenta solo**; vuelve
+  a la cola si el usuario la edita o pulsa **Reintentar** en el inicio.
+- Borrados: la fila se quita de Room y queda anotada en `pending_deletes` hasta que Firestore la borra.
+
+**Bajada (Firestore → Room)**
+- `FarmSyncListener` escucha las colecciones de la finca activa (se reinicia al cambiar de finca o
+  cerrar sesión) y guarda lo que llega como `SYNCED`, **sin generar operaciones pendientes**.
+- Conflictos: **last-write-wins** por `updatedAt` (`SyncConflicts`). Si la fila local tiene cambios
+  sin subir y es igual o más nueva, se conserva. Cada conflicto se registra en Logcat (etiqueta
+  `SgeSync`).
+- Lo borrado aquí y aún no enviado no "revive". Lo borrado en otro celular con la app cerrada se
+  detecta con la primera respuesta completa del servidor.
+- La foto local de una transacción (`photoUri`) se conserva al aplicar cambios remotos.
+
+**Indicadores en la UI**
+- Historial e inicio: reloj junto a las transacciones `PENDING`, alerta en las `FAILED`.
+- Inicio: "X registros pendientes de sincronización" y, si hay rechazos, botón **Reintentar**.
+  Nada si todo está sincronizado.
+
+**Cómo probar** (Logcat, filtro `SgeSync`)
+1. Modo avión → registrar una transacción → aparece el reloj y el aviso en el inicio.
+2. Quitar el modo avión → en segundos desaparece el reloj y el documento aparece en Firestore.
+3. Con dos celulares de la misma finca: lo que se crea en uno aparece en el otro.
+4. Cerrar la app a la fuerza con pendientes, volver a abrirla con red → se suben.
+5. Crear 5 transacciones sin red, conectar → las 5 en Firestore, sin duplicados.
+
 ## Pendiente en otros issues
 
-- **#32**: reintentar filas `PENDING`, escuchar cambios remotos (`addSnapshotListener`) y escribirlos
-  en Room (los DAOs ya tienen `upsertAll` y los mappers `toXxxEntity`), y sincronizar borrados.
 - **#29**: unirse a una finca con código de invitación (crear `members/{uid}` como WORKER).
-- Animales e inspecciones todavía no se suben a Firestore ni se filtran por finca.
+- Animales e inspecciones todavía no se suben a Firestore ni se filtran por finca (necesitan además
+  subir la foto a Firebase Storage). Para sumarlos basta un `SyncAdapter` nuevo en `data/sync/`.
