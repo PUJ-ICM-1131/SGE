@@ -33,6 +33,7 @@ sealed class Screen(val route: String) {
 
     // Workers
     data object Workers : Screen("workers")
+    data object JoinFarm : Screen("join_farm")
 
     // Inspections
     data object InspectionHistory : Screen("inspection_history")

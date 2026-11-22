@@ -13,6 +13,12 @@ interface CategoryRepository {
     fun observeCategories(farmId: String, type: TransactionType): Flow<List<Category>>
     suspend fun getCategory(farmId: String, id: String): Category?
 
+    /**
+     * Descarga de Firestore las categorías de la finca y las guarda en este celular. Lo usa el
+     * trabajador, que no puede crearlas (solo el dueño), mientras no exista la sincronización (#32).
+     */
+    suspend fun pullFromRemote(farmId: String)
+
     /** Inserta las categorías por defecto. Se puede llamar varias veces sin duplicar. */
     suspend fun insertDefaults(farmId: String)
 
