@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,6 +63,7 @@ fun HomeScreen(
     onNavigateToNotifications: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToTransaction: (String) -> Unit,
+    onNavigateToJoinFarm: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -129,6 +131,15 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 Text("Tu cuenta aún no pertenece a una finca.", textAlign = TextAlign.Center)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Si trabajas en una finca, pídele el código al propietario.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(24.dp))
+                Button(onClick = onNavigateToJoinFarm) { Text("Unirme con un código") }
             }
 
             else -> LazyColumn(

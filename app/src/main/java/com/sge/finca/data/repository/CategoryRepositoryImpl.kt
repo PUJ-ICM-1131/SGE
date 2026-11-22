@@ -1,11 +1,13 @@
 package com.sge.finca.data.repository
 
+import com.google.firebase.firestore.FirebaseFirestore
 import com.sge.finca.data.local.SyncStatus
 import com.sge.finca.data.local.dao.CategoryDao
 import com.sge.finca.data.local.dao.PendingDeleteDao
 import com.sge.finca.data.local.entity.PendingDeleteEntity
 import com.sge.finca.data.local.entity.CategoryEntity
 import com.sge.finca.data.remote.FirestorePaths
+import com.sge.finca.data.remote.toCategoryEntity
 import com.sge.finca.data.sync.SyncScheduler
 import com.sge.finca.domain.model.Category
 import com.sge.finca.domain.model.DefaultCategories
@@ -19,6 +21,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
 
 @Singleton
 class CategoryRepositoryImpl @Inject constructor(
@@ -26,6 +29,7 @@ class CategoryRepositoryImpl @Inject constructor(
     private val pendingDeleteDao: PendingDeleteDao,
     private val syncScheduler: SyncScheduler,
     private val sessionRepository: SessionRepository,
+    private val firestore: FirebaseFirestore,
 ) : CategoryRepository {
 
     override fun observeCategories(farmId: String): Flow<List<Category>> {
@@ -41,6 +45,17 @@ class CategoryRepositoryImpl @Inject constructor(
 
     override suspend fun getCategory(farmId: String, id: String): Category? =
         categoryDao.getById(farmId, id)?.toDomain()
+
+    override suspend fun pullFromRemote(farmId: String) {
+        require(farmId.isNotBlank()) { "La finca es obligatoria" }
+        val snapshot = firestore
+            .collection("${FirestorePaths.farm(farmId)}/${FirestorePaths.CATEGORIES}")
+            .get()
+            .await()
+        val categories = snapshot.documents.mapNotNull { it.toCategoryEntity(farmId) }
+        // Ya vienen del servidor: se guardan como SYNCED y no se vuelven a subir.
+        if (categories.isNotEmpty()) categoryDao.upsertAll(categories)
+    }
 
     override suspend fun insertDefaults(farmId: String) {
         require(farmId.isNotBlank()) { "La finca es obligatoria" }

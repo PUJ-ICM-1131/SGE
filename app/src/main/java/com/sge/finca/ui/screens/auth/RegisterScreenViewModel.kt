@@ -9,6 +9,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.sge.finca.data.repository.AuthRepository
+import com.sge.finca.domain.model.InviteCode
 import com.sge.finca.domain.repository.FarmRepository
 import com.sge.finca.platform.biometric.BiometricSetup
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -83,18 +84,23 @@ class RegisterViewModel @Inject constructor(
     }
 
     fun joinFarmButtonPress() {
-        if (_uiState.value.inviteCode.isBlank()) {
-            showError("El código de invitación es obligatorio")
-            return
+        val code = _uiState.value.inviteCode
+        when {
+            code.isBlank() -> showError("El código de invitación es obligatorio")
+            // El formato se revisa antes de crear la cuenta; si la finca existe se sabe después,
+            // porque consultar el código requiere sesión.
+            !InviteCode.isValid(code) -> showError("El código debe tener el formato XXXX-XXXX")
+            else -> register(farmName = null, inviteCode = InviteCode.normalize(code))
         }
-        // TODO (#29): validar el código de invitación y unir al usuario a la finca como WORKER.
-        register(farmName = null)
     }
 
     // ---------- Lógica interna ----------
 
-    /** [farmName] != null: el usuario crea una finca nueva y queda como propietario. */
-    private fun register(farmName: String?) {
+    /**
+     * [farmName] != null: el usuario crea una finca nueva y queda como propietario.
+     * [inviteCode] != null: el usuario se une a una finca existente como trabajador (#29).
+     */
+    private fun register(farmName: String?, inviteCode: String? = null) {
         val s = _uiState.value
         if (s.isLoading) return
 
@@ -103,6 +109,7 @@ class RegisterViewModel @Inject constructor(
             try {
                 authRepository.signUp(s.email.trim(), s.password)
                 if (farmName != null) createFarm(farmName, s.name.trim())
+                if (inviteCode != null) joinFarm(inviteCode, s.name.trim())
                 // Cuenta creada: se ofrece activar la huella (si aplica) antes de ir al Home.
                 val uid = authRepository.currentUser?.uid
                 if (uid != null && biometricSetup.shouldOfferActivation(uid)) {
@@ -140,6 +147,21 @@ class RegisterViewModel @Inject constructor(
             throw e
         } catch (e: Exception) {
             Log.e("SgeRegister", "No se pudo crear la finca", e)
+        }
+    }
+
+    /**
+     * Igual que [createFarm]: la cuenta ya existe, así que si el código no sirve el usuario entra
+     * sin finca y desde Inicio puede volver a intentarlo con "Unirme con un código".
+     */
+    private suspend fun joinFarm(inviteCode: String, name: String) {
+        try {
+            withTimeoutOrNull(FARM_CREATION_TIMEOUT_MS) { farmRepository.joinFarm(inviteCode, name) }
+                ?: Log.w("SgeRegister", "Unirse a la finca tardó demasiado")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("SgeRegister", "No se pudo unir a la finca con el código", e)
         }
     }
 

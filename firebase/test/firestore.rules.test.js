@@ -3,6 +3,7 @@
 // Requiere Java 11+ (el emulador es un .jar).
 
 const { test, before, after, beforeEach } = require('node:test');
+const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {
@@ -11,7 +12,7 @@ const {
   assertFails,
 } = require('@firebase/rules-unit-testing');
 const {
-  doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch,
+  doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, collection, getDocs,
 } = require('firebase/firestore');
 
 const FARM = 'finca-1';
@@ -21,6 +22,7 @@ const WORKER = 'uid-worker';
 const INACTIVE = 'uid-inactive';
 const STRANGER = 'uid-stranger';
 const INVITE = 'ABC234';
+const NEWBIE = 'uid-newbie';
 
 let env;
 
@@ -43,6 +45,7 @@ beforeEach(async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(doc(db, `farms/${FARM}`), { name: 'La Esperanza', ownerUid: OWNER, inviteCode: INVITE, createdAt: 1 });
+    await setDoc(doc(db, `inviteCodes/${INVITE}`), { farmId: FARM, farmName: 'La Esperanza' });
     await setDoc(doc(db, `farms/${FARM}/members/${OWNER}`), { role: 'OWNER', isActive: true, joinedAt: 1 });
     await setDoc(doc(db, `farms/${FARM}/members/${WORKER}`), { role: 'WORKER', isActive: true, joinedAt: 2 });
     await setDoc(doc(db, `farms/${FARM}/members/${INACTIVE}`), { role: 'WORKER', isActive: false, joinedAt: 3 });
@@ -141,6 +144,7 @@ test('crear finca: farm + membresía OWNER + perfil en un batch', async () => {
   batch.set(doc(d, 'farms/nueva'), { name: 'Nueva', ownerUid: STRANGER, inviteCode: 'QWE345', createdAt: 1 });
   batch.set(doc(d, `farms/nueva/members/${STRANGER}`), { role: 'OWNER', isActive: true, joinedAt: 1 });
   batch.set(doc(d, `users/${STRANGER}`), { name: 'S', farmId: 'nueva' }, { merge: true });
+  batch.set(doc(d, 'inviteCodes/QWE345'), { farmId: 'nueva', farmName: 'Nueva' });
   await assertSucceeds(batch.commit());
 });
 
@@ -153,6 +157,59 @@ test('unirse como trabajador exige el código de invitación correcto (#29)', as
   const ref = (uid) => doc(db(uid), `farms/${FARM}/members/${uid}`);
   await assertFails(setDoc(ref('nuevo-1'), { role: 'WORKER', isActive: true, joinedAt: 9, inviteCode: 'MALO11' }));
   await assertSucceeds(setDoc(ref('nuevo-2'), { role: 'WORKER', isActive: true, joinedAt: 9, inviteCode: INVITE }));
+});
+
+test('códigos: con sesión se consulta uno conocido, pero no se listan (#29)', async () => {
+  await assertSucceeds(getDoc(doc(db(NEWBIE), `inviteCodes/${INVITE}`)));
+  await assertFails(getDoc(doc(db(null), `inviteCodes/${INVITE}`)));
+  await assertFails(getDocs(collection(db(NEWBIE), 'inviteCodes')));
+});
+
+test('códigos: solo el dueño publica el código vigente de su finca (#29)', async () => {
+  // Un extraño no puede apuntar un código a una finca ajena.
+  await assertFails(setDoc(doc(db(STRANGER), 'inviteCodes/HACK-2345'), { farmId: FARM, farmName: 'x' }));
+  // El dueño tampoco publica un código que no es el vigente.
+  await assertFails(setDoc(doc(db(OWNER), 'inviteCodes/OTRO-2345'), { farmId: FARM, farmName: 'x' }));
+  // Nadie lo modifica ni lo borra salvo el dueño.
+  await assertFails(updateDoc(doc(db(OWNER), `inviteCodes/${INVITE}`), { farmName: 'Otra' }));
+  await assertFails(deleteDoc(doc(db(WORKER), `inviteCodes/${INVITE}`)));
+  // Finca anterior al #29 sin índice: el dueño publica su código vigente.
+  await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), `inviteCodes/${INVITE}`)));
+  await assertSucceeds(setDoc(doc(db(OWNER), `inviteCodes/${INVITE}`), { farmId: FARM, farmName: 'La Esperanza' }));
+});
+
+test('unirse con código: busca la finca y queda como WORKER (#29)', async () => {
+  const d = db(NEWBIE);
+  const index = await getDoc(doc(d, `inviteCodes/${INVITE}`));
+  const farmId = index.data().farmId;
+  const batch = writeBatch(d);
+  batch.set(doc(d, `farms/${farmId}/members/${NEWBIE}`), {
+    role: 'WORKER', isActive: true, joinedAt: 9, displayName: 'Nuevo', inviteCode: INVITE,
+  });
+  batch.set(doc(d, `users/${NEWBIE}`), { farmId, role: 'WORKER' }, { merge: true });
+  await assertSucceeds(batch.commit());
+  // Ya es miembro: ve la finca.
+  await assertSucceeds(getDoc(doc(d, `farms/${FARM}`)));
+});
+
+test('regenerar: el código anterior deja de servir (#29)', async () => {
+  const NEW_CODE = 'NUEV-2345';
+  const owner = db(OWNER);
+  const batch = writeBatch(owner);
+  batch.update(doc(owner, `farms/${FARM}`), { inviteCode: NEW_CODE });
+  batch.delete(doc(owner, `inviteCodes/${INVITE}`));
+  batch.set(doc(owner, `inviteCodes/${NEW_CODE}`), { farmId: FARM, farmName: 'La Esperanza' });
+  await assertSucceeds(batch.commit());
+
+  const d = db(NEWBIE);
+  // El código anterior ya no está en el índice.
+  assert.equal((await getDoc(doc(d, `inviteCodes/${INVITE}`))).exists(), false);
+  await assertFails(setDoc(doc(d, `farms/${FARM}/members/${NEWBIE}`), { role: 'WORKER', isActive: true, joinedAt: 9, inviteCode: INVITE }));
+  await assertSucceeds(setDoc(doc(d, `farms/${FARM}/members/${NEWBIE}`), { role: 'WORKER', isActive: true, joinedAt: 9, inviteCode: NEW_CODE }));
+});
+
+test('el dueño no puede unirse a su propia finca como trabajador', async () => {
+  await assertFails(setDoc(doc(db(OWNER), `farms/${FARM}/members/${OWNER}`), { role: 'WORKER', isActive: true, joinedAt: 9, inviteCode: INVITE }));
 });
 
 // ---------- Datos operativos y perfiles ----------
