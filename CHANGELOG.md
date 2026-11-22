@@ -4,6 +4,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 ### Added
+- Roles y permisos (#28): propietario y trabajador con tabla única de permisos (`Permission`), sesión con el rol en vivo (`SessionRepository` / `SessionViewModel`), verificación de permisos en los repositorios, opciones de propietario ocultas para el trabajador, rutas restringidas protegidas y Security Rules de Firestore con pruebas en `firebase/`.
 - Modelo de datos (#23): entidades Room de transacciones, contactos y recordatorios (BD v6, migración 5→6 sin pérdida de datos), `syncStatus` en todas las tablas, repositorios con interfaz en dominio y escritura Room → Firestore, estructura de Firestore documentada en `docs/5-modelo-datos/`. Al registrarse con "Crear finca" se crea la finca en Firestore con sus categorías por defecto.
 - Definición del proyecto y requisitos funcionales/no funcionales (Pasos 1-2).
 - Historias de usuario (HU-01 a HU-12) con criterios de aceptación Gherkin y backlog priorizado MoSCoW (Paso 3).
