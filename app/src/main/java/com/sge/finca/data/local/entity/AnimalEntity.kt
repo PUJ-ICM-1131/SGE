@@ -24,6 +24,8 @@ data class AnimalEntity(
     /** URL de la foto en Firebase Storage (cuando se suba). [photoUri] es la copia local. */
     val remotePhotoUrl: String? = null,
     val syncStatus: SyncStatus = SyncStatus.PENDING,
+    /** Última edición (epoch millis): resuelve conflictos entre celulares (#32, #62). */
+    val updatedAt: Long = 0L,
 ) {
     fun toDomain() = Animal(
         id = id,
@@ -38,7 +40,7 @@ data class AnimalEntity(
     )
 
     companion object {
-        fun fromDomain(animal: Animal, ownerUid: String, farmId: String? = null) = AnimalEntity(
+        fun fromDomain(animal: Animal, ownerUid: String, farmId: String, updatedAt: Long) = AnimalEntity(
             id = animal.id,
             name = animal.name,
             notes = animal.notes,
@@ -50,6 +52,7 @@ data class AnimalEntity(
             variant = animal.variant,
             ownerUid = ownerUid,
             farmId = farmId,
+            updatedAt = updatedAt,
         )
     }
 }
