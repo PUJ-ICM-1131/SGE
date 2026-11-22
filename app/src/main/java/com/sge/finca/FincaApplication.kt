@@ -6,6 +6,7 @@ import androidx.work.Configuration
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.sge.finca.platform.notifications.ReminderNotifier
 import com.sge.finca.platform.storage.PhotoCleanupWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
@@ -17,6 +18,9 @@ class FincaApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
+    @Inject
+    lateinit var reminderNotifier: ReminderNotifier
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -24,6 +28,8 @@ class FincaApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        // El canal debe existir antes de mostrar la primera notificación (Android 8+).
+        reminderNotifier.createChannel()
         schedulePhotoCleanup()
     }
 

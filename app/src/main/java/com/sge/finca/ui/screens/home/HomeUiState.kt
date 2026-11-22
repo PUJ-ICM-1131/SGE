@@ -10,6 +10,8 @@ data class HomeUiState(
     val expenseCents: Long = 0,
     /** Las [HomeViewModel.RECENT_COUNT] más recientes. */
     val recentTransactions: List<Transaction> = emptyList(),
+    /** Recordatorios vencidos o que vencen hoy: el número de la campana. */
+    val notificationCount: Int = 0,
     val noFarm: Boolean = false,
     val isLoading: Boolean = true,
 )
