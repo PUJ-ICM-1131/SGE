@@ -3,9 +3,9 @@ package com.sge.finca.ui.screens.workers
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sge.finca.data.repository.WorkersRepository
-import com.sge.finca.domain.model.FarmRole
 import com.sge.finca.domain.repository.FarmRepository
-import com.sge.finca.domain.repository.UserRepository
+import com.sge.finca.domain.repository.SessionRepository
+import android.util.Log
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -13,12 +13,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class WorkersViewModel @Inject constructor(
-    private val userRepository: UserRepository,
+    private val sessionRepository: SessionRepository,
     private val farmRepository: FarmRepository,
     private val workersRepository: WorkersRepository,
 ) : ViewModel() {
@@ -30,8 +33,12 @@ class WorkersViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            userRepository.observeCurrentUser().collectLatest { user ->
-                val farmId = user?.farmId?.takeIf { it.isNotBlank() }
+            // El rol sale de la membresía de la finca (#28), no del perfil.
+            sessionRepository.session
+                .filter { !it.loading }
+                .map { it.farmId?.takeIf(String::isNotBlank) to it.isOwner }
+                .distinctUntilChanged()
+                .collectLatest { (farmId, isOwnerByRole) ->
                 currentFarmId = farmId
 
                 if (farmId == null) {
@@ -62,9 +69,20 @@ class WorkersViewModel @Inject constructor(
                     )
                 }
 
+                // Fincas anteriores al #29: publica el código vigente en el índice para que
+                // funcione al unirse. Si falla (sin red), se reintenta la próxima vez.
+                if (isOwnerByRole) {
+                    try {
+                        farmRepository.ensureInviteCodeIndex(farmId)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w("SgeWorkers", "No se pudo publicar el código en el índice", e)
+                    }
+                }
+
                 farmRepository.observeFarm(farmId).collectLatest { farm ->
-                    val isOwner =
-                        user.role == FarmRole.OWNER && farm?.ownerUid == user.uid
+                    val isOwner = isOwnerByRole && farm != null
 
                     _uiState.update {
                         it.copy(

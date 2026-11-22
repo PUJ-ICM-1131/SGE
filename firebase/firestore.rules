@@ -45,6 +45,32 @@ service cloud.firestore {
       allow read, write: if isAuth() && request.auth.uid == userId;
     }
 
+    // ---------- Códigos de invitación (#29) ----------
+
+    // Índice código → finca. Quien quiere unirse todavía no es miembro y no puede leer farms,
+    // así que busca aquí la finca del código que le dieron. Solo se puede consultar un código
+    // que ya se conoce (get); listarlos está prohibido para que nadie los recorra.
+    match /inviteCodes/{code} {
+      allow get: if isAuth();
+      allow list: if false;
+
+      // Solo el dueño publica el código VIGENTE de su finca: al crearla (mismo batch, por eso
+      // getAfter), al regenerarlo (misma transacción) o para fincas anteriores al #29.
+      allow create: if isAuth()
+        && request.resource.data.keys().hasOnly(['farmId', 'farmName'])
+        && getAfter(/databases/$(database)/documents/farms/$(request.resource.data.farmId)).data.ownerUid
+             == request.auth.uid
+        && getAfter(/databases/$(database)/documents/farms/$(request.resource.data.farmId)).data.inviteCode
+             == code;
+
+      allow update: if false;
+
+      // Al regenerar, el dueño borra el código anterior.
+      allow delete: if isAuth()
+        && get(/databases/$(database)/documents/farms/$(resource.data.farmId)).data.ownerUid
+             == request.auth.uid;
+    }
+
     // ---------- Fincas ----------
 
     match /farms/{farmId} {

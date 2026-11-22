@@ -28,6 +28,7 @@ import com.sge.finca.ui.screens.auth.RegisterScreen
 import com.sge.finca.ui.screens.auth.RegisterViewModel
 import com.sge.finca.ui.screens.categories.CategoriesScreen
 import com.sge.finca.ui.screens.contacts.ContactsScreen
+import com.sge.finca.ui.screens.farm.JoinFarmScreen
 import com.sge.finca.ui.screens.home.HomeScreen
 import com.sge.finca.ui.screens.inspections.InspectionDetailScreen
 import com.sge.finca.ui.screens.inspections.InspectionDetailViewModel
@@ -150,6 +151,7 @@ fun AppNavigation(
                 onNavigateToTransaction = { id ->
                     navController.navigate(Screen.TransactionDetail.createRoute(id))
                 },
+                onNavigateToJoinFarm = { navController.navigate(Screen.JoinFarm.route) },
             )
         }
         composable(Screen.TransactionHistory.route) {
@@ -198,6 +200,14 @@ fun AppNavigation(
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 showCategories = session.can(Permission.MANAGE_CATEGORIES),
                 showWorkers = session.can(Permission.MANAGE_WORKERS),
+            )
+        }
+
+        // Unirse a una finca con código (#29). Al terminar vuelve al inicio, que ya ve la finca.
+        composable(Screen.JoinFarm.route) {
+            JoinFarmScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onJoined = { navController.popBackStack(Screen.Home.route, inclusive = false) },
             )
         }
 

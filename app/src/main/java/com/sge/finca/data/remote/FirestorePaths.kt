@@ -4,6 +4,7 @@ package com.sge.finca.data.remote
  * Estructura de Firestore (documentada en docs/5-modelo-datos/README.md):
  *
  * users/{uid}                                  perfil + farmId
+ * inviteCodes/{code}                           farmId y nombre de la finca (#29, lectura pública)
  * farms/{farmId}                               nombre, dueño, código de invitación
  * farms/{farmId}/members/{uid}                 rol (OWNER/WORKER)
  * farms/{farmId}/transactions/{id}
@@ -25,8 +26,12 @@ object FirestorePaths {
     const val REMINDERS = "reminders"
     const val INSPECTION_ROUTES = "inspectionRoutes"
     const val POINTS = "points"
+    const val INVITE_CODES = "inviteCodes"
 
     fun user(uid: String) = "$USERS/${requireId(uid)}"
+
+    /** Índice público código → finca (#29): permite encontrar la finca antes de ser miembro. */
+    fun inviteCode(code: String) = "$INVITE_CODES/${requireId(code)}"
     fun farm(farmId: String) = "$FARMS/${requireId(farmId)}"
     fun member(farmId: String, uid: String) = "${farm(farmId)}/$MEMBERS/${requireId(uid)}"
     fun transaction(farmId: String, id: String) = "${farm(farmId)}/$TRANSACTIONS/${requireId(id)}"
