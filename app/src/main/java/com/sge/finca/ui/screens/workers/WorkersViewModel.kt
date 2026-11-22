@@ -3,7 +3,7 @@ package com.sge.finca.ui.screens.workers
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sge.finca.data.repository.WorkersRepository
-import com.sge.finca.domain.model.UserRole
+import com.sge.finca.domain.model.FarmRole
 import com.sge.finca.domain.repository.FarmRepository
 import com.sge.finca.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -64,7 +64,7 @@ class WorkersViewModel @Inject constructor(
 
                 farmRepository.observeFarm(farmId).collectLatest { farm ->
                     val isOwner =
-                        user.role == UserRole.OWNER && farm?.ownerUid == user.uid
+                        user.role == FarmRole.OWNER && farm?.ownerUid == user.uid
 
                     _uiState.update {
                         it.copy(
