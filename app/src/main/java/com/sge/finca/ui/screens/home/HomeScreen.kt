@@ -2,35 +2,45 @@ package com.sge.finca.ui.screens.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sge.finca.ui.components.ShakeHandler
+import com.sge.finca.ui.format.Cop
+import com.sge.finca.ui.screens.transactions.TransactionListItem
 import com.sge.finca.ui.theme.ExpenseRed
 import com.sge.finca.ui.theme.IncomeGreen
-import com.sge.finca.ui.components.ShakeHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,14 +48,18 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToNewTransaction: () -> Unit,
     onNavigateToReports: () -> Unit,
+    onNavigateToHistory: () -> Unit,
+    onNavigateToTransaction: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // Agitar el celular abre "Nueva transacción" (#13).
     ShakeHandler(
         onStart = viewModel::startShakeDetection,
         onStop = viewModel::stopShakeDetection,
         onShake = onNavigateToNewTransaction,
     )
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -58,97 +72,121 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToNewTransaction) {
-                Icon(Icons.Default.Add, contentDescription = "Nueva transacción")
+            if (!state.noFarm) {
+                FloatingActionButton(onClick = onNavigateToNewTransaction) {
+                    Icon(Icons.Default.Add, contentDescription = "Nueva transacción")
+                }
             }
         },
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-        ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                ),
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "Balance General",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "$${state.balanceCents / 100}",
-                        style = MaterialTheme.typography.displayLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
+        when {
+            state.isLoading -> Column(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) { CircularProgressIndicator() }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Card(modifier = Modifier.weight(1f)) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text("Ingresos", style = MaterialTheme.typography.labelLarge)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "$${state.incomeCents / 100}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = IncomeGreen,
-                        )
-                    }
-                }
-                Card(modifier = Modifier.weight(1f)) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text("Egresos", style = MaterialTheme.typography.labelLarge)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "$${state.expenseCents / 100}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = ExpenseRed,
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Transacciones Recientes",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+            state.noFarm -> Column(
+                modifier = Modifier.fillMaxSize().padding(innerPadding).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
+                Text("Tu cuenta aún no pertenece a una finca.", textAlign = TextAlign.Center)
+            }
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = innerPadding.calculateTopPadding() + 16.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 88.dp, // espacio para el FAB
+                ),
+            ) {
+                item(key = "balance") { MonthSummary(state) }
+
+                item(key = "recent-header") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 8.dp, top = 24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Transacciones recientes",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (state.recentTransactions.isNotEmpty()) {
+                            TextButton(onClick = onNavigateToHistory) { Text("Ver todo") }
+                        }
+                    }
+                }
+
+                if (state.recentTransactions.isEmpty()) {
+                    item(key = "empty") {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                "No hay transacciones aún",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                "Toca + para registrar la primera",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                } else {
+                    items(state.recentTransactions, key = { it.id }) { transaction ->
+                        TransactionListItem(
+                            transaction = transaction,
+                            onClick = { onNavigateToTransaction(transaction.id) },
+                            showDate = true,
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthSummary(state: HomeUiState) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("Balance del mes", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "No hay transacciones aún",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "Toca + para registrar la primera",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Cop.format(state.balanceCents),
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (state.balanceCents < 0) ExpenseRed else MaterialTheme.colorScheme.primary,
                 )
             }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            AmountCard("Ingresos", "+" + Cop.format(state.incomeCents), IncomeGreen, Modifier.weight(1f))
+            AmountCard("Egresos", "-" + Cop.format(state.expenseCents), ExpenseRed, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun AmountCard(label: String, value: String, color: androidx.compose.ui.graphics.Color, modifier: Modifier) {
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.height(4.dp))
+            Text(value, style = MaterialTheme.typography.titleLarge, color = color)
         }
     }
 }

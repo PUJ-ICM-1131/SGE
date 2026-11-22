@@ -1,7 +1,5 @@
 package com.sge.finca.ui.screens.transactions
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,12 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,7 +30,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
@@ -53,12 +47,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sge.finca.domain.model.BusinessDate
-import com.sge.finca.domain.model.Transaction
 import com.sge.finca.domain.model.TransactionType
 import com.sge.finca.ui.components.ShakeHandler
 import com.sge.finca.ui.format.BusinessDateFormat
@@ -71,7 +63,7 @@ import com.sge.finca.ui.theme.IncomeGreen
 fun TransactionHistoryScreen(
     viewModel: TransactionHistoryViewModel = hiltViewModel(),
     onNavigateToNew: () -> Unit,
-    onNavigateToEdit: (String) -> Unit,
+    onNavigateToDetail: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showRangePicker by rememberSaveable { mutableStateOf(false) }
@@ -122,7 +114,7 @@ fun TransactionHistoryScreen(
                 },
                 onCategorySelected = viewModel::onCategorySelected,
                 onClearFilters = viewModel::onClearFilters,
-                onTransactionClick = onNavigateToEdit,
+                onTransactionClick = onNavigateToDetail,
             )
         }
     }
@@ -182,7 +174,7 @@ private fun HistoryContent(
             byDay.forEach { (day, transactions) ->
                 item(key = "day-$day") { DayHeader(dayLabel(day, today)) }
                 items(transactions, key = { it.id }) { transaction ->
-                    TransactionRow(transaction, onClick = { onTransactionClick(transaction.id) })
+                    TransactionListItem(transaction, onClick = { onTransactionClick(transaction.id) })
                     HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
                 }
             }
@@ -308,47 +300,6 @@ private fun DayHeader(label: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
     )
-}
-
-@Composable
-private fun TransactionRow(transaction: Transaction, onClick: () -> Unit) {
-    val isIncome = transaction.type == TransactionType.INCOME
-    val color = if (isIncome) IncomeGreen else ExpenseRed
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        leadingContent = {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(color.copy(alpha = 0.15f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    if (isIncome) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                    contentDescription = if (isIncome) "Ingreso" else "Egreso",
-                    tint = color,
-                )
-            }
-        },
-        headlineContent = { Text(transaction.categoryName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = transaction.note?.let { note ->
-            { Text(note, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-        },
-        trailingContent = {
-            Text(
-                (if (isIncome) "+" else "-") + Cop.format(transaction.amountCents),
-                style = MaterialTheme.typography.titleMedium,
-                color = color,
-            )
-        },
-    )
-}
-
-/** "Hoy", "Ayer" o "20 oct 2026". */
-private fun dayLabel(day: Long, today: Long): String = when (day) {
-    today -> "Hoy"
-    today - 1 -> "Ayer"
-    else -> BusinessDateFormat.format(day)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
