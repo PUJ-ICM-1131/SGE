@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.sge.finca.domain.model.InspectionRoute
 import com.sge.finca.domain.model.RoutePoint
 import com.sge.finca.domain.repository.InspectionRepository
+import com.sge.finca.platform.location.CenterOnMeResult
 import com.sge.finca.platform.location.LocationHelper
 import com.sge.finca.platform.location.LocationState
+import com.sge.finca.ui.components.GpsMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -58,6 +60,37 @@ class InspectionMapViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Botón "centrar en mi ubicación", igual que en el mapa de ganado (#59): sin ubicación
+     * activada o sin señal avisa con un snackbar en vez de no hacer nada.
+     */
+    fun onCenterOnMeClicked() {
+        if (_uiState.value.isLocating) return
+        _uiState.update { it.copy(isLocating = true) }
+        viewModelScope.launch {
+            val result = locationHelper.locateForCentering()
+            _uiState.update {
+                when (result) {
+                    CenterOnMeResult.LocationOff ->
+                        it.copy(isLocating = false, gpsMessage = GpsMessage.LOCATION_OFF)
+                    CenterOnMeResult.NoSignal ->
+                        it.copy(isLocating = false, gpsMessage = GpsMessage.NO_SIGNAL)
+                    is CenterOnMeResult.Located -> it.copy(
+                        isLocating = false,
+                        userLatitude = result.location.latitude,
+                        userLongitude = result.location.longitude,
+                        hasUserLocation = true,
+                        centerRequest = it.centerRequest + 1,
+                    )
+                }
+            }
+        }
+    }
+
+    fun onGpsMessageShown() {
+        _uiState.update { it.copy(gpsMessage = null) }
     }
 
     fun onStartTracking() {

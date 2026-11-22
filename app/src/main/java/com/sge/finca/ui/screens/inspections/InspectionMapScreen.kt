@@ -46,10 +46,13 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
-import com.sge.finca.ui.components.onHeightChanged
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.sge.finca.ui.components.CenterOnMeButton
+import com.sge.finca.ui.components.GpsMessageEffect
 import com.sge.finca.ui.components.LocationPermissionHandler
+import com.sge.finca.ui.components.onHeightChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +69,13 @@ fun InspectionMapScreen(
             snackbarHostState.showSnackbar("Señal GPS perdida. Verifica tu ubicación.")
         }
     }
+
+    // Avisos del botón "centrar en mi ubicación": snackbar, nunca un diálogo.
+    GpsMessageEffect(
+        message = state.gpsMessage,
+        snackbarHostState = snackbarHostState,
+        onShown = viewModel::onGpsMessageShown,
+    )
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -94,7 +104,7 @@ fun InspectionMapScreen(
 
                     val cameraPositionState = rememberCameraPositionState()
 
-                    LaunchedEffect(state.hasUserLocation) {
+                    LaunchedEffect(state.hasUserLocation, state.centerRequest) {
                         if (state.hasUserLocation) {
                             cameraPositionState.animate(
                                 CameraUpdateFactory.newLatLngZoom(
@@ -105,8 +115,8 @@ fun InspectionMapScreen(
                         }
                     }
 
-                    // Lo que flota sobre el mapa (#60): el mapa corre su zoom, su botón de mi
-                    // ubicación y el logo de Google para que no queden tapados.
+                    // Lo que flota sobre el mapa (#60): el mapa corre su zoom, su brújula y el
+                    // logo de Google para que no queden tapados.
                     val density = LocalDensity.current
                     var statsHeight by remember { mutableStateOf(0.dp) }
                     var controlsHeight by remember { mutableStateOf(0.dp) }
@@ -116,6 +126,9 @@ fun InspectionMapScreen(
                             modifier = Modifier.fillMaxSize(),
                             cameraPositionState = cameraPositionState,
                             properties = MapProperties(isMyLocationEnabled = true),
+                            // El botón propio reemplaza al de Google, que no avisa si el GPS
+                            // está apagado (igual que en el mapa de ganado).
+                            uiSettings = MapUiSettings(myLocationButtonEnabled = false),
                             contentPadding = PaddingValues(
                                 top = if (state.isTracking) statsHeight else 0.dp,
                                 bottom = controlsHeight,
@@ -155,6 +168,14 @@ fun InspectionMapScreen(
                                 .align(Alignment.BottomCenter)
                                 .onHeightChanged(density) { controlsHeight = it }
                                 .padding(16.dp),
+                        )
+
+                        CenterOnMeButton(
+                            isLocating = state.isLocating,
+                            onClick = viewModel::onCenterOnMeClicked,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(12.dp),
                         )
                     }
                 },

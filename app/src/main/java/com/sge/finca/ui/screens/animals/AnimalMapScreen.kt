@@ -1,7 +1,5 @@
 package com.sge.finca.ui.screens.animals
 
-import android.content.Intent
-import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -13,26 +11,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallFloatingActionButton
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -67,6 +59,8 @@ import com.google.maps.android.compose.rememberMarkerState
 import com.sge.finca.R
 import com.sge.finca.domain.model.TrackedAnimal
 import com.sge.finca.ui.components.AnimalAvatar
+import com.sge.finca.ui.components.CenterOnMeButton
+import com.sge.finca.ui.components.GpsMessageEffect
 import com.sge.finca.ui.components.LocationPermissionHandler
 import com.sge.finca.ui.components.MapboxMapView
 import com.sge.finca.ui.components.onHeightChanged
@@ -106,30 +100,11 @@ fun AnimalMapScreen(
     }
 
     // Avisos del botón "centrar en mi ubicación" (#59): snackbar, nunca un diálogo.
-    val context = LocalContext.current
-    LaunchedEffect(state.gpsMessage) {
-        val message = state.gpsMessage ?: return@LaunchedEffect
-        try {
-            when (message) {
-                GpsMessage.LOCATION_OFF -> {
-                    val result = snackbarHostState.showSnackbar(
-                        message = "No hay señal GPS: activa la ubicación del celular para centrar el mapa.",
-                        actionLabel = "Activar",
-                        duration = SnackbarDuration.Long,
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-                    }
-                }
-                GpsMessage.NO_SIGNAL -> snackbarHostState.showSnackbar(
-                    "Aún no hay señal GPS. Sal a cielo abierto e intenta de nuevo.",
-                )
-            }
-        } finally {
-            // Después de mostrarlo: limpiarlo antes reiniciaría este efecto y cortaría el aviso.
-            viewModel.onGpsMessageShown()
-        }
-    }
+    GpsMessageEffect(
+        message = state.gpsMessage,
+        snackbarHostState = snackbarHostState,
+        onShown = viewModel::onGpsMessageShown,
+    )
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -373,22 +348,6 @@ private fun AnimalInfoCard(
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.Close, contentDescription = "Cerrar")
             }
-        }
-    }
-}
-
-/** Centra el mapa en el usuario (#59). Mientras busca la posición muestra un indicador. */
-@Composable
-private fun CenterOnMeButton(
-    isLocating: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    SmallFloatingActionButton(onClick = onClick, modifier = modifier) {
-        if (isLocating) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-        } else {
-            Icon(Icons.Default.MyLocation, contentDescription = "Centrar en mi ubicación")
         }
     }
 }
