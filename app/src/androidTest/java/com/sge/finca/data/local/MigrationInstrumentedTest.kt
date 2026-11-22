@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Verifica que la migración 5 -> 6 no borra datos y que Room acepta el esquema resultante.
+ * Verifica que las migraciones 5 -> 6 -> 7 no borran datos y que Room acepta el esquema resultante.
  *
  * No usa MigrationTestHelper (necesita room-testing y exportSchema = true). En su lugar crea a
  * mano una base de datos con el esquema v5, tal como la dejan las migraciones 1..5, y la abre con
@@ -40,7 +40,7 @@ class MigrationInstrumentedTest {
     }
 
     @Test
-    fun migrate5To6KeepsDataAndMatchesEntities() = runBlocking {
+    fun migrateFrom5KeepsDataAndMatchesEntities() = runBlocking {
         createVersion5Database()
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, dbName)
@@ -65,6 +65,8 @@ class MigrationInstrumentedTest {
             assertEquals(0, db.transactionDao().observeByFarm("finca-1").first().size)
             assertEquals(0, db.farmContactDao().observeByFarm("finca-1").first().size)
             assertEquals(0, db.reminderDao().observeByFarm("finca-1").first().size)
+            // v7 (#32): tabla de borrados pendientes.
+            assertEquals(0, db.pendingDeleteDao().getRetryable().size)
         } finally {
             db.close()
         }
