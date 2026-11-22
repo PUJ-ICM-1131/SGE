@@ -4,6 +4,10 @@ import com.sge.finca.domain.model.Category
 import com.sge.finca.domain.model.TransactionType
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Todas las escrituras verifican el rol del usuario (issue #28) y lanzan [SecurityException]
+ * si no tiene permiso; ver [com.sge.finca.domain.model.Permission].
+ */
 interface CategoryRepository {
     fun observeCategories(farmId: String): Flow<List<Category>>
     fun observeCategories(farmId: String, type: TransactionType): Flow<List<Category>>

@@ -10,8 +10,10 @@ import com.sge.finca.data.remote.FirestorePaths
 import com.sge.finca.data.remote.deleteDocument
 import com.sge.finca.data.remote.pushDocument
 import com.sge.finca.data.remote.toFirestore
+import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.model.FarmContact
 import com.sge.finca.domain.repository.ContactRepository
+import com.sge.finca.domain.repository.SessionRepository
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,6 +26,7 @@ class ContactRepositoryImpl @Inject constructor(
     private val dao: FarmContactDao,
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
+    private val sessionRepository: SessionRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) : ContactRepository {
 
@@ -42,6 +45,7 @@ class ContactRepositoryImpl @Inject constructor(
         email: String?,
         notes: String?,
     ): String {
+        sessionRepository.requirePermission(farmId, Permission.MANAGE_CONTACTS)
         require(farmId.isNotBlank()) { "La finca es obligatoria" }
         val uid = checkNotNull(auth.currentUser?.uid) { "Inicia sesión para guardar contactos" }
         val cleanName = name.trim()
@@ -65,6 +69,7 @@ class ContactRepositoryImpl @Inject constructor(
     }
 
     override suspend fun update(contact: FarmContact) {
+        sessionRepository.requirePermission(contact.farmId, Permission.MANAGE_CONTACTS)
         val current = dao.getById(contact.farmId, contact.id)
             ?: throw IllegalArgumentException("Contacto no encontrado")
         val cleanName = contact.name.trim()
@@ -83,6 +88,7 @@ class ContactRepositoryImpl @Inject constructor(
     }
 
     override suspend fun delete(farmId: String, id: String) {
+        sessionRepository.requirePermission(farmId, Permission.MANAGE_CONTACTS)
         dao.delete(farmId, id)
         firestore.deleteDocument(FirestorePaths.contact(farmId, id))
     }
