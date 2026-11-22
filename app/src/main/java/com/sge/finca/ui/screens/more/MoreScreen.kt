@@ -34,6 +34,9 @@ fun MoreScreen(
     onNavigateToReminders: () -> Unit,
     onNavigateToReports: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    // Opciones solo para el propietario (issue #28): a un trabajador no se le muestran.
+    showCategories: Boolean = true,
+    showWorkers: Boolean = true,
 ) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Más") }) },
@@ -43,20 +46,24 @@ fun MoreScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            ListItem(
-                headlineContent = { Text("Categorías") },
-                supportingContent = { Text("Gestionar categorías de ingresos y egresos") },
-                leadingContent = { Icon(Icons.Default.Category, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = onNavigateToCategories),
-            )
-            HorizontalDivider()
-            ListItem(
-                headlineContent = { Text("Trabajadores") },
-                supportingContent = { Text("Invitar y gestionar trabajadores de la finca") },
-                leadingContent = { Icon(Icons.Default.Group, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = onNavigateToWorkers),
-            )
-            HorizontalDivider()
+            if (showCategories) {
+                ListItem(
+                    headlineContent = { Text("Categorías") },
+                    supportingContent = { Text("Gestionar categorías de ingresos y egresos") },
+                    leadingContent = { Icon(Icons.Default.Category, contentDescription = null) },
+                    modifier = Modifier.clickable(onClick = onNavigateToCategories),
+                )
+                HorizontalDivider()
+            }
+            if (showWorkers) {
+                ListItem(
+                    headlineContent = { Text("Trabajadores") },
+                    supportingContent = { Text("Invitar y gestionar trabajadores de la finca") },
+                    leadingContent = { Icon(Icons.Default.Group, contentDescription = null) },
+                    modifier = Modifier.clickable(onClick = onNavigateToWorkers),
+                )
+                HorizontalDivider()
+            }
             ListItem(
                 headlineContent = { Text("Contactos") },
                 supportingContent = { Text("Directorio de contactos de la finca") },
