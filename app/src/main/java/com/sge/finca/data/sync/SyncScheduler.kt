@@ -32,8 +32,11 @@ class WorkManagerSyncScheduler @Inject constructor(
         .build()
 
     /**
-     * KEEP: si ya hay una subida esperando red, no se encola otra; esa subida procesa todo lo
-     * pendiente al ejecutarse. Sin red, espera a que vuelva la conexión.
+     * APPEND_OR_REPLACE y no KEEP: con KEEP, si el SyncWorker ya está corriendo (en su última
+     * pasada, sin nada más que subir), la petición nueva se descarta y lo recién guardado queda
+     * PENDING hasta el trabajo periódico (30 min). Encadenado, corre después del actual; si no
+     * hay nada pendiente termina al instante. Si el anterior falló o se canceló, se reemplaza.
+     * Sin red, espera a que vuelva la conexión.
      */
     override fun requestSync() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
@@ -41,7 +44,7 @@ class WorkManagerSyncScheduler @Inject constructor(
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, BACKOFF_SECONDS, TimeUnit.SECONDS)
             .build()
         WorkManager.getInstance(context)
-            .enqueueUniqueWork(WORK_NOW, ExistingWorkPolicy.KEEP, request)
+            .enqueueUniqueWork(WORK_NOW, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 
     override fun schedulePeriodicSync() {

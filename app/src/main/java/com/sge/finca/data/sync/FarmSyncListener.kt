@@ -3,6 +3,8 @@ package com.sge.finca.data.sync
 import android.util.Log
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.QuerySnapshot
 import com.sge.finca.data.injection.ApplicationScope
 import com.sge.finca.data.local.SyncStatus
@@ -11,17 +13,21 @@ import com.sge.finca.data.remote.FirestorePaths
 import com.sge.finca.domain.repository.SessionRepository
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
 
 /**
@@ -33,6 +39,9 @@ import kotlinx.coroutines.launch
  *   la etiqueta "SgeSync".
  * - Lo borrado en este celular que aún no se ha enviado no "revive" (se consulta pending_deletes).
  * - Al cambiar de finca o cerrar sesión, se quitan los listeners anteriores.
+ * - Si Firestore rechaza un listener (p. ej. PERMISSION_DENIED mientras el servidor confirma la
+ *   membresía recién creada), se vuelve a registrar con espera creciente: un listener rechazado
+ *   no se recupera solo.
  */
 @Singleton
 class FarmSyncListener @Inject constructor(
@@ -56,6 +65,11 @@ class FarmSyncListener @Inject constructor(
                 .distinctUntilChanged()
                 .collectLatest { farmId ->
                     if (farmId == null) return@collectLatest
+                    // Lo que quedó FAILED por PERMISSION_DENIED justo al crear la finca o unirse
+                    // (la membresía aún no estaba en el servidor) tiene otra oportunidad ahora que
+                    // la membresía está confirmada. Si de verdad lo niegan las reglas, vuelve a FAILED.
+                    adapters.all.forEach { it.resetFailed(farmId) }
+                    pendingDeleteDao.resetFailed(farmId)
                     // Recién iniciada la sesión o cambiada la finca: subir lo que haya pendiente.
                     syncScheduler.requestSync()
                     coroutineScope {
@@ -68,12 +82,21 @@ class FarmSyncListener @Inject constructor(
     private suspend fun <E : Any> listen(farmId: String, adapter: SyncAdapter<E>) {
         var reconciled = false
         snapshots(FirestorePaths.farmCollection(farmId, adapter.collection)).collect { snapshot ->
-            apply(farmId, adapter, snapshot)
-            // La primera respuesta completa del servidor trae TODOS los documentos: lo que en Room
-            // figura como sincronizado y ya no está allá, se borró en otro celular con la app cerrada.
-            if (!reconciled && !snapshot.metadata.isFromCache) {
-                reconcileDeletions(farmId, adapter, snapshot)
-                reconciled = true
+            try {
+                apply(farmId, adapter, snapshot)
+                // La primera respuesta completa del servidor trae TODOS los documentos: lo que en
+                // Room figura como sincronizado y ya no está allá, se borró en otro celular con la
+                // app cerrada.
+                if (!reconciled && !snapshot.metadata.isFromCache) {
+                    reconcileDeletions(farmId, adapter, snapshot)
+                    reconciled = true
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Un documento raro o un error de Room no debe tumbar los demás listeners (ni la
+                // app: el scope de la aplicación no tiene manejador de excepciones).
+                Log.e(TAG, "No se pudo aplicar un cambio de ${adapter.collection}", e)
             }
         }
     }
@@ -125,18 +148,37 @@ class FarmSyncListener @Inject constructor(
             .forEach { adapter.deleteLocal(farmId, it) }
     }
 
+    /**
+     * - Cuando Firestore manda un error, ese listener ya no recibe nada más: se cierra el flujo con
+     *   el error y [retryWhen] registra uno nuevo (1 s, 2 s, 4 s... hasta 1 min).
+     * - MetadataChanges.INCLUDE: sin esto, si el servidor responde lo mismo que ya había en caché,
+     *   Firestore no emite nada, nunca llega un snapshot con isFromCache = false y no se
+     *   reconcilian los borrados. documentChanges sigue sin incluir cambios solo de metadatos.
+     */
     private fun snapshots(collectionPath: String): Flow<QuerySnapshot> = callbackFlow {
         val registration = firestore.collection(collectionPath)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    // P. ej. reglas que niegan la lectura: se registra y se sigue con lo local.
-                    Log.w(TAG, "No se pudo escuchar $collectionPath", error)
-                    return@addSnapshotListener
+            .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
+                when {
+                    error != null -> close(error)
+                    snapshot != null -> trySend(snapshot)
                 }
-                if (snapshot != null) trySend(snapshot)
             }
         awaitClose { registration.remove() }
-    }.buffer(Channel.UNLIMITED)
+    }
+        .buffer(Channel.UNLIMITED)
+        .retryWhen { error, attempt ->
+            val code = (error as? FirebaseFirestoreException)?.code
+            val retry = code in RETRYABLE_CODES
+            if (retry) {
+                val waitMs = (INITIAL_RETRY_MS shl attempt.coerceAtMost(6L).toInt())
+                    .coerceAtMost(MAX_RETRY_MS)
+                Log.w(TAG, "Listener de $collectionPath rechazado ($code); reintento en $waitMs ms")
+                delay(waitMs)
+            }
+            retry
+        }
+        // Error no recuperable: se registra y se sigue con lo local (no se tumba la app).
+        .catch { error -> Log.e(TAG, "No se pudo escuchar $collectionPath", error) }
 
     private fun logConflict(adapter: SyncAdapter<*>, id: String, detail: String) {
         Log.i(TAG, "Conflicto en ${adapter.collection}/$id: $detail")
@@ -144,5 +186,18 @@ class FarmSyncListener @Inject constructor(
 
     private companion object {
         const val TAG = "SgeSync"
+        const val INITIAL_RETRY_MS = 1_000L
+        const val MAX_RETRY_MS = 60_000L
+
+        /** PERMISSION_DENIED incluido: es lo que se ve mientras se propaga una membresía nueva. */
+        val RETRYABLE_CODES = setOf(
+            FirebaseFirestoreException.Code.PERMISSION_DENIED,
+            FirebaseFirestoreException.Code.UNAVAILABLE,
+            FirebaseFirestoreException.Code.UNAUTHENTICATED,
+            FirebaseFirestoreException.Code.DEADLINE_EXCEEDED,
+            FirebaseFirestoreException.Code.ABORTED,
+            FirebaseFirestoreException.Code.INTERNAL,
+            FirebaseFirestoreException.Code.RESOURCE_EXHAUSTED,
+        )
     }
 }

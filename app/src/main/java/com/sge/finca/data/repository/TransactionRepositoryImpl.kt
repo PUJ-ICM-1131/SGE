@@ -1,6 +1,7 @@
 package com.sge.finca.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.sge.finca.data.local.SyncStatus
 import com.sge.finca.data.local.dao.CategoryDao
 import com.sge.finca.data.local.dao.TransactionDao
@@ -9,6 +10,7 @@ import com.sge.finca.data.local.entity.CategoryEntity
 import com.sge.finca.data.local.entity.PendingDeleteEntity
 import com.sge.finca.data.local.entity.TransactionEntity
 import com.sge.finca.data.remote.FirestorePaths
+import com.sge.finca.data.remote.toTransactionEntity
 import com.sge.finca.data.sync.SyncScheduler
 import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.model.Transaction
@@ -21,6 +23,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 
 /**
  * Lecturas desde Room; escrituras en Room como PENDING y luego SyncWorker las sube a Firestore
@@ -35,6 +39,7 @@ class TransactionRepositoryImpl @Inject constructor(
     private val syncScheduler: SyncScheduler,
     private val auth: FirebaseAuth,
     private val sessionRepository: SessionRepository,
+    private val firestore: FirebaseFirestore,
 ) : TransactionRepository {
 
     override fun observeTransactions(
@@ -53,6 +58,25 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override suspend fun getTransaction(farmId: String, id: String): Transaction? =
         transactionDao.getById(farmId, id)?.toDomain()
+
+    override fun observeTransaction(farmId: String, id: String): Flow<Transaction?> =
+        transactionDao.observeById(farmId, id).map { it?.toDomain() }
+
+    override suspend fun pullFromRemote(farmId: String, id: String): Boolean {
+        require(farmId.isNotBlank() && id.isNotBlank()) { "Movimiento no válido" }
+        // Borrada en este celular y el borrado aún no se envía: no debe reaparecer.
+        if (pendingDeleteDao.exists(farmId, FirestorePaths.TRANSACTIONS, id)) return false
+        if (transactionDao.getById(farmId, id) != null) return true
+
+        val snapshot = withTimeout(REMOTE_TIMEOUT_MS) {
+            firestore.document(FirestorePaths.transaction(farmId, id)).get().await()
+        }
+        if (!snapshot.exists()) return false
+        val entity = snapshot.toTransactionEntity(farmId) ?: return false
+        // IGNORE: si el listener la guardó mientras esperábamos, se respeta esa copia.
+        transactionDao.insertIfAbsent(entity)
+        return true
+    }
 
     override suspend fun create(farmId: String, input: TransactionInput): String {
         require(farmId.isNotBlank()) { "La finca es obligatoria" }
@@ -142,5 +166,8 @@ class TransactionRepositoryImpl @Inject constructor(
     private companion object {
         /** 10.000 millones de pesos: tope de cordura contra errores de digitación. */
         const val MAX_AMOUNT_CENTS = 1_000_000_000_000L
+
+        /** Sin red, get() puede tardar en rendirse; la pantalla no debe quedarse cargando. */
+        const val REMOTE_TIMEOUT_MS = 10_000L
     }
 }

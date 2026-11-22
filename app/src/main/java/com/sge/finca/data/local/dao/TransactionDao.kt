@@ -40,6 +40,14 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id AND farmId = :farmId LIMIT 1")
     suspend fun getById(farmId: String, id: String): TransactionEntity?
 
+    /** Detalle: emite null mientras no exista y vuelve a emitir cuando llega o cambia. */
+    @Query("SELECT * FROM transactions WHERE id = :id AND farmId = :farmId LIMIT 1")
+    fun observeById(farmId: String, id: String): Flow<TransactionEntity?>
+
+    /** No pisa una fila existente (p. ej. la que acaba de guardar el listener). -1 si ya existía. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(transaction: TransactionEntity): Long
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(transaction: TransactionEntity)
 
