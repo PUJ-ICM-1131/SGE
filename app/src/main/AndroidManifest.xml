@@ -78,15 +78,18 @@
 
         </provider>
 
-        <!-- TODO: add FCM service when Firebase is configured
+        <!-- Avisos push de transacciones (FCM). Los envía notifier/ desde el LXC de Proxmox. -->
         <service
-            android:name=".data.services.SGEFirebaseMessagingService"
+            android:name=".platform.notifications.SgeMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-        -->
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="movements" />
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"

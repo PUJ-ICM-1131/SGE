@@ -1,0 +1,41 @@
+package com.sge.finca.platform.notifications
+
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+
+/**
+ * Recibe los mensajes de FCM. sge-notifier manda mensajes de solo datos con prioridad alta,
+ * así que este método se ejecuta también con la app en segundo plano o cerrada.
+ */
+@AndroidEntryPoint
+class SgeMessagingService : FirebaseMessagingService() {
+
+    @Inject lateinit var tokenRegistrar: PushTokenRegistrar
+
+    @Inject lateinit var transactionNotifier: TransactionPushNotifier
+
+    override fun onNewToken(token: String) {
+        tokenRegistrar.onNewToken(token)
+    }
+
+    override fun onMessageReceived(message: RemoteMessage) {
+        val data = message.data
+        when (data["type"]) {
+            TYPE_TRANSACTION_CREATED -> {
+                val transactionId = data["transactionId"] ?: return
+                transactionNotifier.show(
+                    transactionId = transactionId,
+                    title = data["title"] ?: "Nuevo movimiento",
+                    body = data["body"] ?: "Se registró un movimiento en la finca",
+                )
+            }
+            // Tipos desconocidos (versiones futuras del servidor) se ignoran.
+        }
+    }
+
+    private companion object {
+        const val TYPE_TRANSACTION_CREATED = "transaction_created"
+    }
+}

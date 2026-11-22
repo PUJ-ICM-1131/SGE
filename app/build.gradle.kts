@@ -114,7 +114,8 @@ dependencies {
     implementation(libs.firebase.analytics)
 
     // implementation(libs.firebase.storage)
-    // implementation(libs.firebase.messaging)
+    // Push de transacciones nuevas (llegan desde notifier/ en el LXC de Proxmox)
+    implementation(libs.firebase.messaging)
 
     // Maps & Location
     implementation(libs.play.services.maps)
