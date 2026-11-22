@@ -1,14 +1,12 @@
 package com.sge.finca.data.repository
 
-import com.google.firebase.firestore.FirebaseFirestore
-import com.sge.finca.data.injection.ApplicationScope
 import com.sge.finca.data.local.SyncStatus
 import com.sge.finca.data.local.dao.CategoryDao
+import com.sge.finca.data.local.dao.PendingDeleteDao
+import com.sge.finca.data.local.entity.PendingDeleteEntity
 import com.sge.finca.data.local.entity.CategoryEntity
 import com.sge.finca.data.remote.FirestorePaths
-import com.sge.finca.data.remote.deleteDocument
-import com.sge.finca.data.remote.pushDocument
-import com.sge.finca.data.remote.toFirestore
+import com.sge.finca.data.sync.SyncScheduler
 import com.sge.finca.domain.model.Category
 import com.sge.finca.domain.model.DefaultCategories
 import com.sge.finca.domain.model.Permission
@@ -19,16 +17,15 @@ import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 @Singleton
 class CategoryRepositoryImpl @Inject constructor(
     private val categoryDao: CategoryDao,
-    private val firestore: FirebaseFirestore,
+    private val pendingDeleteDao: PendingDeleteDao,
+    private val syncScheduler: SyncScheduler,
     private val sessionRepository: SessionRepository,
-    @ApplicationScope private val scope: CoroutineScope,
 ) : CategoryRepository {
 
     override fun observeCategories(farmId: String): Flow<List<Category>> {
@@ -75,7 +72,7 @@ class CategoryRepositoryImpl @Inject constructor(
                 isDefault = true
             )
             categoryDao.insert(entity)
-            push(entity)
+            syncScheduler.requestSync()
         }
     }
 
@@ -101,7 +98,7 @@ class CategoryRepositoryImpl @Inject constructor(
             isDefault = false
         )
         categoryDao.insert(entity)
-        push(entity)
+        syncScheduler.requestSync()
         return entity.id
     }
 
@@ -131,7 +128,7 @@ class CategoryRepositoryImpl @Inject constructor(
             syncStatus = SyncStatus.PENDING
         )
         categoryDao.update(updated)
-        push(updated)
+        syncScheduler.requestSync()
     }
 
     /**
@@ -140,19 +137,20 @@ class CategoryRepositoryImpl @Inject constructor(
      */
     override suspend fun delete(farmId: String, id: String) {
         sessionRepository.requirePermission(farmId, Permission.MANAGE_CATEGORIES)
+        // Primero se anota el borrado pendiente: si la app se cierra justo aquí, igual se envía.
+        pendingDeleteDao.insert(
+            PendingDeleteEntity(
+                path = FirestorePaths.category(farmId, id),
+                farmId = farmId,
+                collection = FirestorePaths.CATEGORIES,
+                docId = id,
+                createdAt = System.currentTimeMillis(),
+            )
+        )
         categoryDao.delete(farmId, id)
-        firestore.deleteDocument(FirestorePaths.category(farmId, id))
+        syncScheduler.requestSync()
     }
 
-    private fun push(entity: CategoryEntity) {
-        firestore.pushDocument(
-            path = FirestorePaths.category(entity.farmId, entity.id),
-            data = entity.toFirestore(),
-            scope = scope,
-        ) {
-            categoryDao.markSynced(entity.farmId, entity.id, entity.name)
-        }
-    }
 
     private fun normalize(name: String): String =
         name.trim().lowercase(Locale.ROOT)
