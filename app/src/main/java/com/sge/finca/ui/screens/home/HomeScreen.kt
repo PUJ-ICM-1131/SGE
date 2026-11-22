@@ -1,5 +1,7 @@
 package com.sge.finca.ui.screens.home
 
+import android.Manifest
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,7 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,7 +32,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -36,22 +44,38 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import com.sge.finca.ui.components.ShakeHandler
 import com.sge.finca.ui.format.Cop
 import com.sge.finca.ui.screens.transactions.TransactionListItem
 import com.sge.finca.ui.theme.ExpenseRed
 import com.sge.finca.ui.theme.IncomeGreen
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToNewTransaction: () -> Unit,
-    onNavigateToReports: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToTransaction: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Android 13+: se pide una vez el permiso para avisos de movimientos y recordatorios.
+    // Si lo niega, la app funciona igual; la campana sigue mostrando los recordatorios.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val permission = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+        var asked by rememberSaveable { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            if (!permission.status.isGranted && !asked) {
+                asked = true
+                permission.launchPermissionRequest()
+            }
+        }
+    }
 
     // Agitar el celular abre "Nueva transacción" (#13).
     ShakeHandler(
@@ -65,8 +89,20 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(state.farmName) },
                 actions = {
-                    IconButton(onClick = onNavigateToReports) {
-                        Icon(Icons.Default.BarChart, contentDescription = "Reportes")
+                    // Panel de notificaciones: recordatorios vencidos o de hoy.
+                    IconButton(onClick = onNavigateToNotifications) {
+                        BadgedBox(
+                            badge = {
+                                if (state.notificationCount > 0) {
+                                    Badge { Text(if (state.notificationCount > 9) "9+" else "${state.notificationCount}") }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = "Notificaciones: ${state.notificationCount} pendientes",
+                            )
+                        }
                     }
                 },
             )

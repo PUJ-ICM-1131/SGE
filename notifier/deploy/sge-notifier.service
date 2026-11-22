@@ -1,0 +1,41 @@
+[Unit]
+Description=SGE Notifier - avisos push (FCM) de transacciones nuevas
+Documentation=https://github.com/PUJ-ICM-1131/SGE
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/sge-notifier
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=5
+
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/sge-notifier/env
+
+# La cuenta de servicio de Firebase (acceso de administrador) se entrega como credencial:
+# systemd la copia a un directorio privado que solo ve este servicio y la borra al detenerlo.
+# %d = ese directorio. El archivo original queda 600 root en /etc/sge-notifier.
+LoadCredential=service-account.json:/etc/sge-notifier/service-account.json
+Environment=GOOGLE_APPLICATION_CREDENTIALS=%d/service-account.json
+
+# Usuario efímero sin privilegios; no necesita disco propio (el estado vive en Firestore).
+DynamicUser=yes
+
+# Endurecimiento. Si en el LXC falla con "226/NAMESPACE", activa nesting=1 en el contenedor.
+# (No usar MemoryDenyWriteExecute: rompe el JIT de Node.)
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -3,10 +3,12 @@ package com.sge.finca.data.repository
 import com.google.firebase.auth.FirebaseUser
 import com.sge.finca.data.datasource.AuthRemoteDataSource
 import com.sge.finca.data.datasource.SessionStatus
+import com.sge.finca.platform.notifications.PushTokenRegistrar
 import jakarta.inject.Inject
 
 class AuthRepository @Inject constructor(
     private val authRemoteDataSource: AuthRemoteDataSource,
+    private val pushTokenRegistrar: PushTokenRegistrar,
 ) {
 
     val currentUser: FirebaseUser?
@@ -21,6 +23,8 @@ class AuthRepository @Inject constructor(
     }
 
     fun signOut() {
+        // Invalida el token push de este celular: el siguiente usuario no recibe avisos ajenos.
+        pushTokenRegistrar.onSignOut()
         authRemoteDataSource.signOut()
     }
 

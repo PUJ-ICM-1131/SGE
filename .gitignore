@@ -34,3 +34,7 @@ SKILL.md
 
 # Mockups temporales
 /mockups_temp/
+
+# Cuentas de servicio de Firebase (acceso de administrador): nunca al repo
+*service-account*.json
+*firebase-adminsdk*.json

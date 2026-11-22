@@ -1,0 +1,18 @@
+{
+  "name": "sge-notifier",
+  "version": "1.0.0",
+  "description": "Envía notificaciones push (FCM) a los miembros de una finca cuando se registra una transacción en SGE",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.10.0"
+  }
+}

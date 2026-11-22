@@ -137,7 +137,8 @@ fun AppNavigation(
         composable(Screen.Home.route) {
             HomeScreen(
                 onNavigateToNewTransaction = { navController.navigate(Screen.NewTransaction.route) },
-                onNavigateToReports = { navController.navigate(Screen.Reports.route) },
+                // Campana: panel de notificaciones (recordatorios). Reportes sigue en "Más".
+                onNavigateToNotifications = { navController.navigate(Screen.Reminders.route) },
                 // "Ver todo" va a la pestaña Historial igual que la barra inferior.
                 onNavigateToHistory = {
                     navController.navigate(Screen.TransactionHistory.route) {
