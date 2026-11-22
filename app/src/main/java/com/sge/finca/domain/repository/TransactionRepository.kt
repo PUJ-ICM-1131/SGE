@@ -5,6 +5,10 @@ import com.sge.finca.domain.model.TransactionFilter
 import com.sge.finca.domain.model.TransactionInput
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Todas las escrituras verifican el rol del usuario (issue #28) y lanzan [SecurityException]
+ * si no tiene permiso; ver [com.sge.finca.domain.model.Permission].
+ */
 interface TransactionRepository {
     /** Historial de la finca, del más reciente al más antiguo. */
     fun observeTransactions(

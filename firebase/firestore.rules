@@ -1,0 +1,151 @@
+rules_version = '2';
+
+// Security Rules de SGE (issue #28).
+//
+// La app ya valida los permisos antes de escribir (domain/model/Permission.kt). Estas reglas
+// son la última línea de defensa: aunque alguien se salte la app, Firestore rechaza lo que su
+// rol no permite. La estructura está documentada en docs/5-modelo-datos/README.md.
+//
+// Rol = farms/{farmId}/members/{uid}.role ("OWNER" | "WORKER"). El campo users/{uid}.role
+// es solo informativo y NUNCA se usa para dar permisos.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function memberPath(farmId) {
+      return /databases/$(database)/documents/farms/$(farmId)/members/$(request.auth.uid);
+    }
+
+    // Miembro activo de la finca. Los miembros creados antes del #28 no tienen isActive:
+    // se toman como activos.
+    function isMember(farmId) {
+      return isAuth()
+        && exists(memberPath(farmId))
+        && get(memberPath(farmId)).data.get('isActive', true) == true;
+    }
+
+    function isOwner(farmId) {
+      return isMember(farmId) && get(memberPath(farmId)).data.role == 'OWNER';
+    }
+
+    function changes() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // ---------- Perfiles ----------
+
+    // Cada usuario solo lee y escribe su propio perfil.
+    match /users/{userId} {
+      allow read, write: if isAuth() && request.auth.uid == userId;
+    }
+
+    // ---------- Fincas ----------
+
+    match /farms/{farmId} {
+      allow read: if isMember(farmId);
+
+      // Crear una finca: el creador queda como dueño (ownerUid = su uid).
+      allow create: if isAuth() && request.resource.data.ownerUid == request.auth.uid;
+
+      // Configurar la finca o regenerar el código: solo el dueño, sin cambiar de dueño.
+      allow update: if isOwner(farmId) && !changes().hasAny(['ownerUid']);
+      allow delete: if false;
+
+      // ---------- Miembros ----------
+      match /members/{memberId} {
+        allow read: if isMember(farmId);
+
+        // 1) Al crear la finca: el creador se registra a sí mismo como OWNER. Se usa getAfter
+        //    porque la finca se crea en el mismo batch (FarmRepositoryImpl.createFarm).
+        // 2) Unirse con código de invitación (#29): el usuario se registra a sí mismo como
+        //    WORKER activo, presentando el código vigente de la finca.
+        // 3) El dueño agrega miembros.
+        allow create: if isAuth() && (
+            (memberId == request.auth.uid
+              && request.resource.data.role == 'OWNER'
+              && getAfter(/databases/$(database)/documents/farms/$(farmId)).data.ownerUid
+                   == request.auth.uid)
+          || (memberId == request.auth.uid
+              && request.resource.data.role == 'WORKER'
+              && request.resource.data.get('isActive', true) == true
+              && request.resource.data.inviteCode
+                   == get(/databases/$(database)/documents/farms/$(farmId)).data.inviteCode)
+          || isOwner(farmId)
+        );
+
+        // El dueño gestiona a los demás (rol, dar de baja), pero no se quita a sí mismo el
+        // rol de dueño. Un miembro puede editar sus propios datos, nunca su rol ni isActive.
+        allow update: if
+            (isOwner(farmId)
+              && (memberId != request.auth.uid || request.resource.data.role == 'OWNER'))
+          || (isMember(farmId)
+              && memberId == request.auth.uid
+              && !changes().hasAny(['role', 'isActive']));
+
+        // El dueño saca a un trabajador; un trabajador puede salirse; el dueño no se borra.
+        allow delete: if
+            (isOwner(farmId) && memberId != request.auth.uid)
+          || (memberId == request.auth.uid && !isOwner(farmId));
+      }
+
+      // ---------- Categorías: solo el dueño las gestiona ----------
+      match /categories/{categoryId} {
+        allow read: if isMember(farmId);
+        allow write: if isOwner(farmId);
+      }
+
+      // ---------- Transacciones ----------
+      // Cualquier miembro registra; solo el dueño edita o elimina.
+      match /transactions/{transactionId} {
+        allow read: if isMember(farmId);
+
+        allow create: if isMember(farmId)
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.type in ['INCOME', 'EXPENSE']
+          && request.resource.data.amountCents is int
+          && request.resource.data.amountCents > 0;
+
+        allow update: if isOwner(farmId)
+          && !changes().hasAny(['createdBy', 'createdAt'])
+          && request.resource.data.type in ['INCOME', 'EXPENSE']
+          && request.resource.data.amountCents is int
+          && request.resource.data.amountCents > 0;
+
+        allow delete: if isOwner(farmId);
+      }
+
+      // ---------- Datos operativos: cualquier miembro ----------
+      match /animalRecords/{docId} {
+        allow read, write: if isMember(farmId);
+      }
+      match /contacts/{docId} {
+        allow read, write: if isMember(farmId);
+      }
+      // Recordatorios (#31): cualquier miembro crea y edita; eliminar solo el dueño o quien lo
+      // creó, igual que la app. Nadie se apropia de uno ajeno cambiando createdBy.
+      match /reminders/{docId} {
+        allow read: if isMember(farmId);
+        allow create: if isMember(farmId)
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update: if isMember(farmId) && !changes().hasAny(['createdBy']);
+        allow delete: if isOwner(farmId)
+          || (isMember(farmId) && resource.data.createdBy == request.auth.uid);
+      }
+      match /inspectionRoutes/{routeId} {
+        allow read, write: if isMember(farmId);
+
+        match /points/{pointId} {
+          allow read, write: if isMember(farmId);
+        }
+      }
+    }
+
+    // Cualquier otra ruta queda cerrada (Firestore niega por defecto).
+  }
+}

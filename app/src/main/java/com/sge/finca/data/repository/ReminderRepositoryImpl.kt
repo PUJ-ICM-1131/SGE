@@ -10,8 +10,10 @@ import com.sge.finca.data.remote.FirestorePaths
 import com.sge.finca.data.remote.deleteDocument
 import com.sge.finca.data.remote.pushDocument
 import com.sge.finca.data.remote.toFirestore
+import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.model.Reminder
 import com.sge.finca.domain.repository.ReminderRepository
+import com.sge.finca.domain.repository.SessionRepository
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +30,7 @@ class ReminderRepositoryImpl @Inject constructor(
     private val dao: ReminderDao,
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
+    private val sessionRepository: SessionRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) : ReminderRepository {
 
@@ -50,6 +53,7 @@ class ReminderRepositoryImpl @Inject constructor(
         description: String?,
         dueAt: Long,
     ): String {
+        sessionRepository.requirePermission(farmId, Permission.MANAGE_REMINDERS)
         require(farmId.isNotBlank()) { "La finca es obligatoria" }
         val uid = checkNotNull(auth.currentUser?.uid) { "Inicia sesión para crear recordatorios" }
         val cleanTitle = title.trim()
@@ -73,6 +77,7 @@ class ReminderRepositoryImpl @Inject constructor(
     }
 
     override suspend fun update(reminder: Reminder) {
+        sessionRepository.requirePermission(reminder.farmId, Permission.MANAGE_REMINDERS)
         val current = dao.getById(reminder.farmId, reminder.id)
             ?: throw IllegalArgumentException("Recordatorio no encontrado")
         val cleanTitle = reminder.title.trim()
@@ -89,6 +94,7 @@ class ReminderRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setCompleted(farmId: String, id: String, completed: Boolean) {
+        sessionRepository.requirePermission(farmId, Permission.MANAGE_REMINDERS)
         val current = dao.getById(farmId, id)
             ?: throw IllegalArgumentException("Recordatorio no encontrado")
         if (current.isCompleted == completed) return
@@ -96,6 +102,7 @@ class ReminderRepositoryImpl @Inject constructor(
     }
 
     override suspend fun delete(farmId: String, id: String) {
+        sessionRepository.requirePermission(farmId, Permission.MANAGE_REMINDERS)
         dao.delete(farmId, id)
         firestore.deleteDocument(FirestorePaths.reminder(farmId, id))
     }

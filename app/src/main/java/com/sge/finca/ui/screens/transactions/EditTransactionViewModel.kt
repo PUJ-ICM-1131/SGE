@@ -5,9 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sge.finca.domain.model.Transaction
 import com.sge.finca.domain.model.TransactionType
-import com.sge.finca.domain.model.UserRole
+import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.repository.TransactionRepository
-import com.sge.finca.domain.repository.UserRepository
+import com.sge.finca.domain.repository.SessionRepository
 import com.sge.finca.domain.usecase.ObserveFarmCategoriesUseCase
 import com.sge.finca.ui.format.Cop
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +24,7 @@ import javax.inject.Inject
 class EditTransactionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeFarmCategories: ObserveFarmCategoriesUseCase,
-    userRepository: UserRepository,
+    sessionRepository: SessionRepository,
     private val transactionRepository: TransactionRepository,
 ) : ViewModel() {
 
@@ -38,16 +38,17 @@ class EditTransactionViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(observeFarmCategories(), userRepository.observeCurrentUser()) { farm, user ->
-                farm to user
-            }.collect { (farm, user) ->
+            combine(observeFarmCategories(), sessionRepository.session) { farm, session ->
+                farm to session
+            }.collect { (farm, session) ->
                 if (farm == null) {
                     _uiState.update { it.copy(isLoading = false, notFound = true) }
                     return@collect
                 }
                 farmId = farm.farmId
-                // Mientras no exista #28 algunos perfiles no traen rol: solo se bloquea al trabajador.
-                val canManage = user?.role != UserRole.WORKER
+                // Editar y eliminar: solo el propietario (#28). El rol sale de la membresía.
+                val canManage = session.can(Permission.EDIT_TRANSACTION) &&
+                    session.can(Permission.DELETE_TRANSACTION)
                 _uiState.update {
                     it.copy(canManage = canManage, form = it.form.copy(categories = farm.categories))
                 }
@@ -138,6 +139,9 @@ class EditTransactionViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: IllegalArgumentException) {
+                _uiState.update { it.copy(isSaving = false, errorMessage = e.message) }
+            } catch (e: SecurityException) {
+                // El repositorio rechazó la escritura por permisos (#28).
                 _uiState.update { it.copy(isSaving = false, errorMessage = e.message) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false, errorMessage = errorMessage) }

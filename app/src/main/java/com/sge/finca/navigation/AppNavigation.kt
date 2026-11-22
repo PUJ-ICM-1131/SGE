@@ -11,6 +11,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.sge.finca.domain.model.Permission
+import com.sge.finca.ui.components.PermissionGate
 import com.sge.finca.ui.screens.animals.AnimalDetailScreen
 import com.sge.finca.ui.screens.animals.AnimalDetailViewModel
 import com.sge.finca.ui.screens.animals.AnimalListScreen
@@ -47,6 +49,7 @@ import com.sge.finca.ui.screens.transactions.NewTransactionScreen
 import com.sge.finca.ui.screens.transactions.TransactionDetailScreen
 import com.sge.finca.ui.screens.transactions.TransactionHistoryScreen
 import com.sge.finca.ui.screens.workers.WorkersScreen
+import com.sge.finca.ui.session.SessionViewModel
 
 /**
  * Solo define las rutas y qué pasa al interactuar con cada pantalla.
@@ -57,6 +60,11 @@ fun AppNavigation(
     navController: NavHostController,
     modifier: Modifier = Modifier,
 ) {
+    // Una sola instancia para toda la app (Activity): rol del usuario para ocultar opciones y
+    // proteger rutas (issue #28).
+    val sessionViewModel: SessionViewModel = hiltViewModel()
+    val session by sessionViewModel.session.collectAsState()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route,
@@ -188,6 +196,8 @@ fun AppNavigation(
                 onNavigateToReminders = { navController.navigate(Screen.Reminders.route) },
                 onNavigateToReports = { navController.navigate(Screen.Reports.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                showCategories = session.can(Permission.MANAGE_CATEGORIES),
+                showWorkers = session.can(Permission.MANAGE_WORKERS),
             )
         }
 
@@ -209,7 +219,14 @@ fun AppNavigation(
             arguments = listOf(navArgument("transactionId") { type = NavType.StringType }),
         ) {
             // El ViewModel lee "transactionId" del SavedStateHandle de esta entrada.
-            EditTransactionScreen(onNavigateBack = { navController.popBackStack() })
+            // Solo el propietario edita transacciones (issue #28).
+            PermissionGate(
+                session = session,
+                permission = Permission.EDIT_TRANSACTION,
+                onNavigateBack = { navController.popBackStack() },
+            ) {
+                EditTransactionScreen(onNavigateBack = { navController.popBackStack() })
+            }
         }
 
         // Other screens
@@ -217,10 +234,22 @@ fun AppNavigation(
             ReportsScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.Categories.route) {
-            CategoriesScreen(onNavigateBack = { navController.popBackStack() })
+            PermissionGate(
+                session = session,
+                permission = Permission.MANAGE_CATEGORIES,
+                onNavigateBack = { navController.popBackStack() },
+            ) {
+                CategoriesScreen(onNavigateBack = { navController.popBackStack() })
+            }
         }
         composable(Screen.Workers.route) {
-            WorkersScreen(onNavigateBack = { navController.popBackStack() })
+            PermissionGate(
+                session = session,
+                permission = Permission.MANAGE_WORKERS,
+                onNavigateBack = { navController.popBackStack() },
+            ) {
+                WorkersScreen(onNavigateBack = { navController.popBackStack() })
+            }
         }
         composable(Screen.InspectionHistory.route) {
             val historyViewModel: InspectionHistoryViewModel = hiltViewModel()

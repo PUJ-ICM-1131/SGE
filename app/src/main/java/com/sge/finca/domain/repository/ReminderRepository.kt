@@ -3,6 +3,10 @@ package com.sge.finca.domain.repository
 import com.sge.finca.domain.model.Reminder
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Todas las escrituras verifican el rol del usuario (issue #28) y lanzan [SecurityException]
+ * si no tiene permiso; ver [com.sge.finca.domain.model.Permission].
+ */
 interface ReminderRepository {
     fun observeReminders(farmId: String): Flow<List<Reminder>>
 

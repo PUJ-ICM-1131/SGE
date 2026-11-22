@@ -3,13 +3,14 @@ package com.sge.finca.ui.screens.transactions
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sge.finca.domain.model.UserRole
+import com.sge.finca.domain.model.Permission
+import com.sge.finca.domain.repository.SessionRepository
 import com.sge.finca.domain.repository.TransactionRepository
-import com.sge.finca.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -23,7 +24,7 @@ import javax.inject.Inject
 @HiltViewModel
 class TransactionDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    userRepository: UserRepository,
+    sessionRepository: SessionRepository,
     transactionRepository: TransactionRepository,
 ) : ViewModel() {
 
@@ -34,13 +35,15 @@ class TransactionDetailViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<TransactionDetailUiState> =
-        userRepository.observeCurrentUser()
-            .flatMapLatest { user ->
-                val farmId = user?.farmId
+        sessionRepository.session
+            .filter { !it.loading }
+            .flatMapLatest { session ->
+                val farmId = session.farmId
                 if (farmId == null) {
                     flowOf(TransactionDetailUiState(isLoading = false, notFound = true))
                 } else {
-                    val canEdit = user.role != UserRole.WORKER
+                    // Rol leído de la membresía de la finca (#28).
+                    val canEdit = session.can(Permission.EDIT_TRANSACTION)
                     transactionRepository.observeTransactions(farmId)
                         .map { list ->
                             val transaction = list.firstOrNull { it.id == transactionId }

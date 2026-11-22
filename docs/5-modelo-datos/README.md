@@ -205,10 +205,52 @@ class TransactionHistoryViewModel @Inject constructor(
 }
 ```
 
+## Roles y permisos (issue #28)
+
+- **Fuente de verdad del rol:** `farms/{farmId}/members/{uid}.role` (`OWNER` | `WORKER`). El campo
+  `users/{uid}.role` es solo informativo.
+- **Tabla de permisos:** `domain/model/Permission.kt`. Es la única: la usan las pantallas para
+  ocultar opciones y los repositorios para rechazar escrituras (`SecurityException`).
+- **Sesión:** `SessionRepository.session` (`StateFlow<Session>`) combina usuario + perfil +
+  membresía con listeners, así que el rol se actualiza en vivo. En la UI se lee con
+  `SessionViewModel` (`session`, `currentUserRole`, `can(permission)`).
+- **Rutas protegidas:** `PermissionGate` en `AppNavigation` para Categorías, Trabajadores y
+  Editar transacción.
+- **Security Rules:** `firebase/firestore.rules` (ver `firebase/README.md`).
+
+| Permiso | Propietario | Trabajador |
+|---|---|---|
+| Registrar transacción, ver historial y reportes | ✅ | ✅ |
+| Registrar animales, iniciar inspecciones, contactos, recordatorios | ✅ | ✅ |
+| Editar / eliminar transacciones | ✅ | ❌ |
+| Gestionar categorías y trabajadores | ✅ | ❌ |
+| Ver / regenerar código de invitación, configurar la finca | ✅ | ❌ |
+
+### Cómo usarlo en una pantalla
+
+```kotlin
+// En el composable de la pantalla
+val sessionViewModel: SessionViewModel = hiltViewModel()
+val session by sessionViewModel.session.collectAsStateWithLifecycle()
+
+if (session.can(Permission.DELETE_TRANSACTION)) {
+    IconButton(onClick = { viewModel.onToggleDeleteDialog(true) }) { /* ... */ }
+}
+```
+
+En el ViewModel, las llamadas a los repositorios ya verifican el permiso; basta capturar el error:
+
+```kotlin
+try {
+    transactionRepository.delete(farmId, id)
+} catch (e: SecurityException) {
+    _uiState.update { it.copy(error = e.message) }
+}
+```
+
 ## Pendiente en otros issues
 
 - **#32**: reintentar filas `PENDING`, escuchar cambios remotos (`addSnapshotListener`) y escribirlos
   en Room (los DAOs ya tienen `upsertAll` y los mappers `toXxxEntity`), y sincronizar borrados.
-- **#28**: Security Rules de Firestore.
 - **#29**: unirse a una finca con código de invitación (crear `members/{uid}` como WORKER).
 - Animales e inspecciones todavía no se suben a Firestore ni se filtran por finca.

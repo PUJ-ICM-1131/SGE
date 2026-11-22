@@ -76,6 +76,9 @@ class NewTransactionViewModel @Inject constructor(
                 throw e
             } catch (e: IllegalArgumentException) {
                 _uiState.update { it.copy(isSaving = false, errorMessage = e.message) }
+            } catch (e: SecurityException) {
+                // Sin finca o membresía inactiva: el repositorio no deja registrar (#28).
+                _uiState.update { it.copy(isSaving = false, errorMessage = e.message) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false, errorMessage = "No se pudo guardar el movimiento") }
             }

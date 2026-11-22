@@ -4,12 +4,14 @@ import com.sge.finca.data.repository.CategoryRepositoryImpl
 import com.sge.finca.data.repository.ContactRepositoryImpl
 import com.sge.finca.data.repository.FarmRepositoryImpl
 import com.sge.finca.data.repository.ReminderRepositoryImpl
+import com.sge.finca.data.repository.SessionRepositoryImpl
 import com.sge.finca.data.repository.TransactionRepositoryImpl
 import com.sge.finca.data.repository.UserRepositoryImpl
 import com.sge.finca.domain.repository.CategoryRepository
 import com.sge.finca.domain.repository.ContactRepository
 import com.sge.finca.domain.repository.FarmRepository
 import com.sge.finca.domain.repository.ReminderRepository
+import com.sge.finca.domain.repository.SessionRepository
 import com.sge.finca.domain.repository.TransactionRepository
 import com.sge.finca.domain.repository.UserRepository
 import dagger.Binds
@@ -18,7 +20,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** Repositorios del modelo de datos (issue #23). Animales e inspecciones tienen su propio módulo. */
+/** Repositorios del modelo de datos (issues #23 y #28). Animales e inspecciones tienen su propio módulo. */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
@@ -46,4 +48,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindUserRepository(impl: UserRepositoryImpl): UserRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSessionRepository(impl: SessionRepositoryImpl): SessionRepository
 }

@@ -12,9 +12,11 @@ import com.sge.finca.data.remote.FirestorePaths
 import com.sge.finca.data.remote.deleteDocument
 import com.sge.finca.data.remote.pushDocument
 import com.sge.finca.data.remote.toFirestore
+import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.model.Transaction
 import com.sge.finca.domain.model.TransactionFilter
 import com.sge.finca.domain.model.TransactionInput
+import com.sge.finca.domain.repository.SessionRepository
 import com.sge.finca.domain.repository.TransactionRepository
 import java.util.UUID
 import javax.inject.Inject
@@ -33,6 +35,7 @@ class TransactionRepositoryImpl @Inject constructor(
     private val categoryDao: CategoryDao,
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
+    private val sessionRepository: SessionRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) : TransactionRepository {
 
@@ -55,6 +58,7 @@ class TransactionRepositoryImpl @Inject constructor(
 
     override suspend fun create(farmId: String, input: TransactionInput): String {
         require(farmId.isNotBlank()) { "La finca es obligatoria" }
+        sessionRepository.requirePermission(farmId, Permission.CREATE_TRANSACTION)
         val user = checkNotNull(auth.currentUser) { "Inicia sesión para registrar movimientos" }
         val category = validate(farmId, input)
         val now = System.currentTimeMillis()
@@ -82,6 +86,7 @@ class TransactionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun update(farmId: String, id: String, input: TransactionInput) {
+        sessionRepository.requirePermission(farmId, Permission.EDIT_TRANSACTION)
         val current = transactionDao.getById(farmId, id)
             ?: throw IllegalArgumentException("Movimiento no encontrado")
         val category = validate(farmId, input)
@@ -106,6 +111,7 @@ class TransactionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun delete(farmId: String, id: String) {
+        sessionRepository.requirePermission(farmId, Permission.DELETE_TRANSACTION)
         transactionDao.delete(farmId, id)
         firestore.deleteDocument(FirestorePaths.transaction(farmId, id))
     }

@@ -11,8 +11,10 @@ import com.sge.finca.data.remote.pushDocument
 import com.sge.finca.data.remote.toFirestore
 import com.sge.finca.domain.model.Category
 import com.sge.finca.domain.model.DefaultCategories
+import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.model.TransactionType
 import com.sge.finca.domain.repository.CategoryRepository
+import com.sge.finca.domain.repository.SessionRepository
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.map
 class CategoryRepositoryImpl @Inject constructor(
     private val categoryDao: CategoryDao,
     private val firestore: FirebaseFirestore,
+    private val sessionRepository: SessionRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) : CategoryRepository {
 
@@ -78,6 +81,7 @@ class CategoryRepositoryImpl @Inject constructor(
 
     override suspend fun create(farmId: String, name: String, type: TransactionType): String {
         require(farmId.isNotBlank()) { "La finca es obligatoria" }
+        sessionRepository.requirePermission(farmId, Permission.MANAGE_CATEGORIES)
 
         val cleanName = name.trim()
         require(cleanName.isNotEmpty()) { "Escribe un nombre" }
@@ -102,6 +106,7 @@ class CategoryRepositoryImpl @Inject constructor(
     }
 
     override suspend fun rename(farmId: String, id: String, newName: String) {
+        sessionRepository.requirePermission(farmId, Permission.MANAGE_CATEGORIES)
         val category = categoryDao.getById(farmId, id)
             ?: throw IllegalArgumentException("Categoría no encontrada")
 
@@ -134,6 +139,7 @@ class CategoryRepositoryImpl @Inject constructor(
      * sigue leyéndose bien después de borrarla.
      */
     override suspend fun delete(farmId: String, id: String) {
+        sessionRepository.requirePermission(farmId, Permission.MANAGE_CATEGORIES)
         categoryDao.delete(farmId, id)
         firestore.deleteDocument(FirestorePaths.category(farmId, id))
     }
