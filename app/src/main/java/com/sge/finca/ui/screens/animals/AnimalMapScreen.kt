@@ -70,6 +70,7 @@ import com.sge.finca.domain.model.TrackedAnimal
 import com.sge.finca.ui.components.AnimalAvatar
 import com.sge.finca.ui.components.LocationPermissionHandler
 import com.sge.finca.ui.components.MapboxMapView
+import com.sge.finca.ui.components.onHeightChanged
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +86,17 @@ fun AnimalMapScreen(
         .startsWith("pk.")
     var useMapbox by rememberSaveable { mutableStateOf(false) }
     var mapboxFailed by remember { mutableStateOf(false) }
+
+    // Lo que tapa la parte de abajo del mapa (#60): el botón de registrar (izquierda) o, con un
+    // animal seleccionado, su tarjeta (todo el ancho; el botón se oculta). El mapa corre su zoom
+    // y los logos de Google/Mapbox fuera de ahí.
+    val density = LocalDensity.current
+    var infoCardHeight by remember { mutableStateOf(0.dp) }
+    val mapOverlayPadding = if (state.selectedAnimal != null) {
+        PaddingValues(bottom = infoCardHeight)
+    } else {
+        PaddingValues(start = FabClearance)
+    }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(mapboxFailed) {
@@ -171,7 +183,7 @@ fun AnimalMapScreen(
                                     useMapbox = false
                                 },
                                 centerRequest = state.centerRequest,
-                                ornamentPadding = PaddingValues(start = FabClearance),
+                                ornamentPadding = mapOverlayPadding,
                             )
                         } else {
                             val cameraPositionState = rememberCameraPositionState()
@@ -194,9 +206,8 @@ fun AnimalMapScreen(
                                 // El botón propio (#59) reemplaza al de Google, que no avisa si el
                                 // GPS está apagado.
                                 uiSettings = MapUiSettings(myLocationButtonEnabled = false),
-                                // Corre el logo de Google a la derecha del botón de registrar (#60);
-                                // los términos de Google Maps exigen que se vea.
-                                contentPadding = PaddingValues(start = FabClearance),
+                                // Los términos de Google Maps exigen que el logo se vea.
+                                contentPadding = mapOverlayPadding,
                                 onMapClick = { viewModel.onSelectionCleared() },
                             ) {
                                 val context = LocalContext.current
@@ -234,6 +245,7 @@ fun AnimalMapScreen(
                     onClose = viewModel::onSelectionCleared,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .onHeightChanged(density) { infoCardHeight = it }
                         .padding(16.dp),
                 )
             }
