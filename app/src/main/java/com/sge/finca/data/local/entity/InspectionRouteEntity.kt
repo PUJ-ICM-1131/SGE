@@ -1,11 +1,13 @@
 package com.sge.finca.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.sge.finca.data.local.SyncStatus
 import com.sge.finca.domain.model.InspectionRoute
 import com.sge.finca.domain.model.RouteStatus
 
-@Entity(tableName = "inspection_routes")
+@Entity(tableName = "inspection_routes", indices = [Index("farmId")])
 data class InspectionRouteEntity(
     @PrimaryKey val id: String,
     val farmId: String = "",
@@ -15,6 +17,7 @@ data class InspectionRouteEntity(
     val status: String = RouteStatus.ACTIVE.name,
     val totalDistanceMeters: Double = 0.0,
     val pointCount: Int = 0,
+    val syncStatus: SyncStatus = SyncStatus.PENDING,
 ) {
     fun toDomain() = InspectionRoute(
         id = id,

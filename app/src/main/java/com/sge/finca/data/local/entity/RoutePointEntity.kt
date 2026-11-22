@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.sge.finca.data.local.SyncStatus
 import com.sge.finca.domain.model.RoutePoint
 
 @Entity(
@@ -26,6 +27,7 @@ data class RoutePointEntity(
     val longitude: Double = 0.0,
     val accuracy: Float = 0f,
     val timestamp: Long = 0L,
+    val syncStatus: SyncStatus = SyncStatus.PENDING,
 ) {
     fun toDomain() = RoutePoint(
         id = id,

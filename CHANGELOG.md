@@ -4,6 +4,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 ### Added
+- Modelo de datos (#23): entidades Room de transacciones, contactos y recordatorios (BD v6, migración 5→6 sin pérdida de datos), `syncStatus` en todas las tablas, repositorios con interfaz en dominio y escritura Room → Firestore, estructura de Firestore documentada en `docs/5-modelo-datos/`. Al registrarse con "Crear finca" se crea la finca en Firestore con sus categorías por defecto.
 - Definición del proyecto y requisitos funcionales/no funcionales (Pasos 1-2).
 - Historias de usuario (HU-01 a HU-12) con criterios de aceptación Gherkin y backlog priorizado MoSCoW (Paso 3).
 - Casos de uso (UC-01 a UC-12), diagrama de clases de dominio y diagramas de secuencia en Mermaid/PlantUML (Paso 4).

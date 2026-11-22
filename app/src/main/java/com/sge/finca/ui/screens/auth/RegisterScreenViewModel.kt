@@ -3,11 +3,13 @@ package com.sge.finca.ui.screens.auth
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.sge.finca.data.repository.AuthRepository
+import com.sge.finca.domain.repository.FarmRepository
 import com.sge.finca.platform.biometric.BiometricSetup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -16,11 +18,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val biometricSetup: BiometricSetup,
+    private val farmRepository: FarmRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegisterState())
@@ -75,8 +79,7 @@ class RegisterViewModel @Inject constructor(
             showError("El nombre de la finca es obligatorio")
             return
         }
-        // TODO: guardar la finca (nombre) cuando exista la base de datos (Firestore)
-        register()
+        register(farmName = _uiState.value.farmName.trim())
     }
 
     fun joinFarmButtonPress() {
@@ -84,13 +87,14 @@ class RegisterViewModel @Inject constructor(
             showError("El código de invitación es obligatorio")
             return
         }
-        // TODO: validar el código de invitación cuando exista la base de datos (Firestore)
-        register()
+        // TODO (#29): validar el código de invitación y unir al usuario a la finca como WORKER.
+        register(farmName = null)
     }
 
     // ---------- Lógica interna ----------
 
-    private fun register() {
+    /** [farmName] != null: el usuario crea una finca nueva y queda como propietario. */
+    private fun register(farmName: String?) {
         val s = _uiState.value
         if (s.isLoading) return
 
@@ -98,6 +102,7 @@ class RegisterViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 authRepository.signUp(s.email.trim(), s.password)
+                if (farmName != null) createFarm(farmName, s.name.trim())
                 // Cuenta creada: se ofrece activar la huella (si aplica) antes de ir al Home.
                 val uid = authRepository.currentUser?.uid
                 if (uid != null && biometricSetup.shouldOfferActivation(uid)) {
@@ -116,6 +121,25 @@ class RegisterViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * La cuenta ya existe en este punto, así que un fallo aquí no debe bloquear el registro:
+     * se registra en el log y el usuario entra sin finca (las pantallas verán farmId = null).
+     */
+    private suspend fun createFarm(farmName: String, ownerName: String) {
+        try {
+            // withTimeoutOrNull: si la red se cae justo aquí, el commit de Firestore no termina
+            // nunca y la pantalla quedaría cargando. Firestore igual envía el batch cuando vuelva.
+            val farm = withTimeoutOrNull(FARM_CREATION_TIMEOUT_MS) {
+                farmRepository.createFarm(farmName, ownerName)
+            }
+            if (farm == null) Log.w("SgeRegister", "La creación de la finca tardó demasiado")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("SgeRegister", "No se pudo crear la finca", e)
         }
     }
 
@@ -152,6 +176,7 @@ class RegisterViewModel @Inject constructor(
 
     private companion object {
         const val MIN_PASSWORD_LENGTH = 6
+        const val FARM_CREATION_TIMEOUT_MS = 15_000L
         val EMAIL_REGEX = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
     }
 }
