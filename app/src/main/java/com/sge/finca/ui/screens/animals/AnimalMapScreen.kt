@@ -7,6 +7,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -135,9 +137,15 @@ fun AnimalMapScreen(
                 },
             )
         },
+        // Abajo a la izquierda (#60): a la derecha están los controles de zoom de Google Maps.
+        floatingActionButtonPosition = FabPosition.Start,
         floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToRegister) {
-                Icon(Icons.Default.Add, contentDescription = "Registrar animal")
+            // Con un animal seleccionado, su tarjeta ocupa el borde inferior: se cierra la
+            // tarjeta para volver a ver el botón.
+            if (state.selectedAnimal == null) {
+                FloatingActionButton(onClick = onNavigateToRegister) {
+                    Icon(Icons.Default.Add, contentDescription = "Registrar animal")
+                }
             }
         },
     ) { innerPadding ->
@@ -163,6 +171,7 @@ fun AnimalMapScreen(
                                     useMapbox = false
                                 },
                                 centerRequest = state.centerRequest,
+                                ornamentPadding = PaddingValues(start = FabClearance),
                             )
                         } else {
                             val cameraPositionState = rememberCameraPositionState()
@@ -185,6 +194,9 @@ fun AnimalMapScreen(
                                 // El botón propio (#59) reemplaza al de Google, que no avisa si el
                                 // GPS está apagado.
                                 uiSettings = MapUiSettings(myLocationButtonEnabled = false),
+                                // Corre el logo de Google a la derecha del botón de registrar (#60);
+                                // los términos de Google Maps exigen que se vea.
+                                contentPadding = PaddingValues(start = FabClearance),
                                 onMapClick = { viewModel.onSelectionCleared() },
                             ) {
                                 val context = LocalContext.current
@@ -369,3 +381,6 @@ private fun CenterOnMeButton(
         }
     }
 }
+
+/** Ancho que ocupa el botón de registrar abajo a la izquierda: 16 de margen + 56 + 16. */
+private val FabClearance = 88.dp

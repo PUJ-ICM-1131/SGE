@@ -24,4 +24,5 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - `src/README.md`: refleja el stack decidido (Kotlin/Compose/Room) y la estructura Gradle prevista.
 
 ### Fixed
+- Mapa de animales (#60): el botón de registrar pasa abajo a la izquierda para no tapar los controles de zoom de Google Maps; el logo y la atribución de Google/Mapbox se corren para seguir visibles, y el botón se oculta mientras está abierta la tarjeta de un animal.
 - Incoherencia con ADR-003: se eliminó la "Cola de Sincronización" de SD-01 y el flujo alternativo 6a de UC-01/UC-02 ya no habla de encolar transacciones — el modelo es local-only con backup a Google Drive.
