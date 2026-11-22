@@ -50,10 +50,16 @@ class SessionRepositoryImpl @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, Session.Loading)
 
     override suspend fun requirePermission(farmId: String, permission: Permission) {
-        val current = withTimeoutOrNull(PERMISSION_TIMEOUT_MS) { session.first { !it.loading } }
-            ?: throw SecurityException(
+        // Se espera a que llegue el rol de ESTA finca: justo después de registrarse o unirse,
+        // la membresía puede tardar unos segundos en confirmarse en el servidor.
+        val current = withTimeoutOrNull(PERMISSION_TIMEOUT_MS) {
+            session.first { !it.loading && (it.uid == null || (it.farmId == farmId && it.role != null)) }
+        } ?: session.value
+        if (current.loading) {
+            throw SecurityException(
                 "No se pudieron verificar tus permisos. Revisa tu conexión e inténtalo de nuevo"
             )
+        }
         when {
             current.uid == null ->
                 throw SecurityException("Inicia sesión para continuar")
