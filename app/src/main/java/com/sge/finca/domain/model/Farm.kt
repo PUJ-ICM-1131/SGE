@@ -25,6 +25,8 @@ data class FarmMember(
     val joinedAt: Long,
     val displayName: String = "",
     val email: String = "",
+    /** Permisos que el propietario le otorgó a este miembro (#67); solo cuentan los [Permission.grantable]. */
+    val grants: Set<Permission> = emptySet(),
 )
 
 /**
