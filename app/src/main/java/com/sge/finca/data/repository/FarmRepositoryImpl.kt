@@ -6,8 +6,10 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.sge.finca.data.remote.FirestorePaths
+import com.sge.finca.data.remote.toFirestore
 import com.sge.finca.domain.model.Farm
-import com.sge.finca.domain.model.UserRole
+import com.sge.finca.domain.model.FarmMember
+import com.sge.finca.domain.model.FarmRole
 import com.sge.finca.domain.repository.CategoryRepository
 import com.sge.finca.domain.repository.FarmRepository
 import java.security.SecureRandom
@@ -68,12 +70,15 @@ class FarmRepositoryImpl @Inject constructor(
             )
             .set(
                 firestore.document(FirestorePaths.member(farm.id, user.uid)),
-                mapOf(
-                    "role" to UserRole.OWNER.name,
-                    "name" to name,
-                    "email" to email,
-                    "joinedAt" to now,
-                ),
+                FarmMember(
+                    uid = user.uid,
+                    farmId = farm.id,
+                    role = FarmRole.OWNER,
+                    isActive = true,
+                    joinedAt = now,
+                    displayName = name,
+                    email = email,
+                ).toFirestore(),
             )
             .set(
                 firestore.document(FirestorePaths.user(user.uid)),
@@ -81,7 +86,7 @@ class FarmRepositoryImpl @Inject constructor(
                     "name" to name,
                     "email" to email,
                     "farmId" to farm.id,
-                    "role" to UserRole.OWNER.name,
+                    "role" to FarmRole.OWNER.name,
                     "createdAt" to now,
                 ),
                 SetOptions.merge(),

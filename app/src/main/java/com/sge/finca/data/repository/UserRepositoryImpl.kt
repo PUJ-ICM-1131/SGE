@@ -6,7 +6,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.sge.finca.data.remote.FirestorePaths
 import com.sge.finca.domain.model.UserProfile
-import com.sge.finca.domain.model.UserRole
+import com.sge.finca.domain.model.FarmRole
 import com.sge.finca.domain.repository.UserRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -67,7 +67,7 @@ class UserRepositoryImpl @Inject constructor(
         name = getString("name") ?: "",
         email = getString("email") ?: "",
         farmId = getString("farmId"),
-        role = getString("role")?.let { raw -> UserRole.entries.firstOrNull { it.name == raw } },
+        role = getString("role")?.let { raw -> FarmRole.entries.firstOrNull { it.name == raw } },
         createdAt = getLong("createdAt") ?: 0L,
     )
 }
