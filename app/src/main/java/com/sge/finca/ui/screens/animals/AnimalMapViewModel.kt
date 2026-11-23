@@ -3,14 +3,15 @@ package com.sge.finca.ui.screens.animals
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sge.finca.domain.usecase.ObserveTrackedAnimalsUseCase
+import com.sge.finca.platform.location.CenterOnMeResult
 import com.sge.finca.platform.location.LocationHelper
+import com.sge.finca.ui.components.GpsMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
@@ -52,21 +53,19 @@ class AnimalMapViewModel @Inject constructor(
      */
     fun onCenterOnMeClicked() {
         if (_uiState.value.isLocating) return
-        if (!locationHelper.isLocationEnabled()) {
-            _uiState.update { it.copy(gpsMessage = GpsMessage.LOCATION_OFF) }
-            return
-        }
         _uiState.update { it.copy(isLocating = true) }
         viewModelScope.launch {
-            val loc = withTimeoutOrNull(LOCATE_TIMEOUT_MS) { locationHelper.requestCurrentLocation() }
+            val result = locationHelper.locateForCentering()
             _uiState.update {
-                if (loc == null) {
-                    it.copy(isLocating = false, gpsMessage = GpsMessage.NO_SIGNAL)
-                } else {
-                    it.copy(
+                when (result) {
+                    CenterOnMeResult.LocationOff ->
+                        it.copy(isLocating = false, gpsMessage = GpsMessage.LOCATION_OFF)
+                    CenterOnMeResult.NoSignal ->
+                        it.copy(isLocating = false, gpsMessage = GpsMessage.NO_SIGNAL)
+                    is CenterOnMeResult.Located -> it.copy(
                         isLocating = false,
-                        userLatitude = loc.latitude,
-                        userLongitude = loc.longitude,
+                        userLatitude = result.location.latitude,
+                        userLongitude = result.location.longitude,
                         hasUserLocation = true,
                         centerRequest = it.centerRequest + 1,
                     )
@@ -85,10 +84,5 @@ class AnimalMapViewModel @Inject constructor(
 
     fun onSelectionCleared() {
         _uiState.update { it.copy(selectedAnimalId = null) }
-    }
-
-    private companion object {
-        /** Más que esto con el indicador girando se siente como si el botón no sirviera. */
-        const val LOCATE_TIMEOUT_MS = 10_000L
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,19 +33,26 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.sge.finca.ui.components.CenterOnMeButton
+import com.sge.finca.ui.components.GpsMessageEffect
 import com.sge.finca.ui.components.LocationPermissionHandler
+import com.sge.finca.ui.components.onHeightChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +69,13 @@ fun InspectionMapScreen(
             snackbarHostState.showSnackbar("Señal GPS perdida. Verifica tu ubicación.")
         }
     }
+
+    // Avisos del botón "centrar en mi ubicación": snackbar, nunca un diálogo.
+    GpsMessageEffect(
+        message = state.gpsMessage,
+        snackbarHostState = snackbarHostState,
+        onShown = viewModel::onGpsMessageShown,
+    )
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -89,7 +104,7 @@ fun InspectionMapScreen(
 
                     val cameraPositionState = rememberCameraPositionState()
 
-                    LaunchedEffect(state.hasUserLocation) {
+                    LaunchedEffect(state.hasUserLocation, state.centerRequest) {
                         if (state.hasUserLocation) {
                             cameraPositionState.animate(
                                 CameraUpdateFactory.newLatLngZoom(
@@ -100,11 +115,24 @@ fun InspectionMapScreen(
                         }
                     }
 
+                    // Lo que flota sobre el mapa (#60): el mapa corre su zoom, su brújula y el
+                    // logo de Google para que no queden tapados.
+                    val density = LocalDensity.current
+                    var statsHeight by remember { mutableStateOf(0.dp) }
+                    var controlsHeight by remember { mutableStateOf(0.dp) }
+
                     Box(modifier = Modifier.fillMaxSize()) {
                         GoogleMap(
                             modifier = Modifier.fillMaxSize(),
                             cameraPositionState = cameraPositionState,
                             properties = MapProperties(isMyLocationEnabled = true),
+                            // El botón propio reemplaza al de Google, que no avisa si el GPS
+                            // está apagado (igual que en el mapa de ganado).
+                            uiSettings = MapUiSettings(myLocationButtonEnabled = false),
+                            contentPadding = PaddingValues(
+                                top = if (state.isTracking) statsHeight else 0.dp,
+                                bottom = controlsHeight,
+                            ),
                         ) {
                             if (state.routePoints.size >= 2) {
                                 Polyline(
@@ -123,7 +151,9 @@ fun InspectionMapScreen(
                                 distanceMeters = state.distanceMeters,
                                 hasGpsSignal = state.hasGpsSignal,
                                 isPaused = state.isPaused,
-                                modifier = Modifier.align(Alignment.TopCenter),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .onHeightChanged(density) { statsHeight = it },
                             )
                         }
 
@@ -136,7 +166,16 @@ fun InspectionMapScreen(
                             onStop = viewModel::onStopTracking,
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
+                                .onHeightChanged(density) { controlsHeight = it }
                                 .padding(16.dp),
+                        )
+
+                        CenterOnMeButton(
+                            isLocating = state.isLocating,
+                            onClick = viewModel::onCenterOnMeClicked,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(12.dp),
                         )
                     }
                 },

@@ -1,6 +1,7 @@
 package com.sge.finca.ui.screens.animals
 
 import com.sge.finca.domain.model.TrackedAnimal
+import com.sge.finca.ui.components.GpsMessage
 
 data class AnimalMapUiState(
     val userLatitude: Double = 4.628,
@@ -19,13 +20,4 @@ data class AnimalMapUiState(
 ) {
     val selectedAnimal: TrackedAnimal?
         get() = animals.firstOrNull { it.animal.id == selectedAnimalId }
-}
-
-/** Avisos del botón "centrar en mi ubicación" (#59). */
-enum class GpsMessage {
-    /** La ubicación del celular está apagada. */
-    LOCATION_OFF,
-
-    /** La ubicación está encendida, pero no llegó una posición a tiempo (p. ej. bajo techo). */
-    NO_SIGNAL,
 }

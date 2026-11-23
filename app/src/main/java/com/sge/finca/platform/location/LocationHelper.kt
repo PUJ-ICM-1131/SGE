@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,6 +39,17 @@ class LocationHelper @Inject constructor(
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
             ?: return false
         return LocationManagerCompat.isLocationEnabled(manager)
+    }
+
+    /**
+     * Para el botón "centrar en mi ubicación" (#59): distingue ubicación apagada de falta de
+     * señal, y no espera más de [timeoutMs] (más que eso se siente como si el botón no sirviera).
+     */
+    suspend fun locateForCentering(timeoutMs: Long = CENTER_TIMEOUT_MS): CenterOnMeResult {
+        if (!isLocationEnabled()) return CenterOnMeResult.LocationOff
+        val location = withTimeoutOrNull(timeoutMs) { requestCurrentLocation() }
+            ?: return CenterOnMeResult.NoSignal
+        return CenterOnMeResult.Located(location)
     }
 
     @SuppressLint("MissingPermission")
@@ -102,5 +114,6 @@ class LocationHelper @Inject constructor(
         private const val MIN_DISPLACEMENT_METERS = 3f
         private const val MAX_ACCEPTABLE_ACCURACY = 50f
         private const val MAX_AGE_MS = 60_000L
+        private const val CENTER_TIMEOUT_MS = 10_000L
     }
 }

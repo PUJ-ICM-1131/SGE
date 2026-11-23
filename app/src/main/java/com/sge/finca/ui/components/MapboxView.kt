@@ -3,6 +3,7 @@ package com.sge.finca.ui.components
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilledTonalButton
@@ -25,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.mapbox.geojson.Point
+import com.mapbox.maps.MapboxExperimental
 import com.mapbox.maps.Style
 import com.mapbox.maps.MapLoadingErrorType
 import com.mapbox.maps.dsl.cameraOptions
@@ -39,6 +41,7 @@ import com.mapbox.maps.extension.compose.style.MapStyle
 import com.sge.finca.domain.model.TrackedAnimal
 import com.sge.finca.ui.screens.animals.CowVariant
 
+@OptIn(MapboxExperimental::class)
 @Composable
 fun MapboxMapView(
     hasUserLocation: Boolean,
@@ -50,6 +53,11 @@ fun MapboxMapView(
     modifier: Modifier = Modifier,
     /** Al cambiar, vuelve a centrar en el usuario aunque la posición sea la misma (#59). */
     centerRequest: Int = 0,
+    /**
+     * Margen extra del logo y la atribución de Mapbox (abajo a la izquierda), para que no
+     * queden tapados por botones de la pantalla (#60). Los términos de Mapbox exigen que se vean.
+     */
+    ornamentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val currentOnMapLoadError = rememberUpdatedState(onMapLoadError)
     // Primer toque: origen. Segundo toque: destino. El tercero inicia otra selección.
@@ -98,6 +106,8 @@ fun MapboxMapView(
             style = {
                 MapStyle(style = if (satelliteStyle) Style.STANDARD_SATELLITE else Style.OUTDOORS)
             },
+            logo = { Logo(modifier = Modifier.padding(ornamentPadding)) },
+            attribution = { Attribution(modifier = Modifier.padding(ornamentPadding)) },
             onMapClickListener = { point ->
                 selectedPoints = if (selectedPoints.size == 2) listOf(point) else selectedPoints + point
                 false

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,9 +23,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -38,6 +43,7 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.sge.finca.ui.components.LocationPermissionHandler
+import com.sge.finca.ui.components.onHeightChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,11 +108,22 @@ fun RouteMapScreen(
                         }
                     }
 
+                    // Aviso arriba y tarjeta de distancia abajo (#60): el mapa corre su zoom, su
+                    // botón de mi ubicación y el logo de Google para que no queden tapados.
+                    val density = LocalDensity.current
+                    var hintHeight by remember { mutableStateOf(0.dp) }
+                    var cardHeight by remember { mutableStateOf(0.dp) }
+                    val showHint = state.origin == null || state.destination == null
+
                     Box(modifier = Modifier.fillMaxSize()) {
                         GoogleMap(
                             modifier = Modifier.fillMaxSize(),
                             cameraPositionState = cameraPositionState,
                             properties = MapProperties(isMyLocationEnabled = true),
+                            contentPadding = PaddingValues(
+                                top = if (showHint) hintHeight else 0.dp,
+                                bottom = if (state.distanceMeters != null) cardHeight else 0.dp,
+                            ),
                             onMapClick = { latLng -> viewModel.onMapTap(latLng) },
                         ) {
                             state.origin?.let { origin ->
@@ -144,12 +161,16 @@ fun RouteMapScreen(
                         if (state.origin == null) {
                             HintOverlay(
                                 text = "Toca el mapa para seleccionar el punto de origen",
-                                modifier = Modifier.align(Alignment.TopCenter),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .onHeightChanged(density) { hintHeight = it },
                             )
                         } else if (state.destination == null) {
                             HintOverlay(
                                 text = "Toca el mapa para seleccionar el destino",
-                                modifier = Modifier.align(Alignment.TopCenter),
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .onHeightChanged(density) { hintHeight = it },
                             )
                         }
 
@@ -158,7 +179,9 @@ fun RouteMapScreen(
                                 distanceMeters = distance,
                                 origin = state.origin!!,
                                 destination = state.destination!!,
-                                modifier = Modifier.align(Alignment.BottomCenter),
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .onHeightChanged(density) { cardHeight = it },
                             )
                         }
                     }
