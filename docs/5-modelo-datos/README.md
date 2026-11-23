@@ -167,6 +167,7 @@ farms/{farmId}/reminders/{id}
 farms/{farmId}/inspectionRoutes/{id}
 farms/{farmId}/inspectionRoutes/{id}/points/{pointId}
 farms/{farmId}/paddocks/{id}                  name, points [{lat, lng}], areaM2, createdBy, createdAt, updatedAt
+farms/{farmId}/alerts/{id}                    animalId, animalName, lat, lng, status (OPEN | RESOLVED), createdAt, forwardedAt, forwardedBy, resolvedAt
 ```
 
 - Todo lo de la finca cuelga de `farms/{farmId}`: así las Security Rules (issue #28) se escriben
@@ -270,6 +271,17 @@ try {
   notifier de alertas (#73) lee ese formato: no cambiarlo sin avisar.
 - Permisos: crea cualquier miembro (`START_INSPECTION`); renombrar y eliminar, solo el propietario
   (`CONFIGURE_FARM`).
+
+## Alertas de vacas fuera de los potreros (issue #73)
+
+- Las crea y resuelve **sge-notifier** (servidor, ver `notifier/README.md`): cada 15 s compara las
+  posiciones de collar-api con los potreros; si una vaca queda fuera de todos en 2 lecturas
+  seguidas, abre una alerta (una por vaca) y avisa al propietario por push. Cuando vuelve a entrar,
+  la alerta pasa a `RESOLVED`.
+- La app no las guarda en Room: solo las lee de Firestore (`AlertRepository`) al abrir la
+  notificación (pantalla `AlertDetail`).
+- Reenviar: el propietario (`FORWARD_ALERTS`) escribe `forwardedAt`/`forwardedBy`; el notifier
+  avisa a los trabajadores activos. Las Security Rules no permiten otro cambio desde la app.
 
 ## Sincronización offline (issue #32)
 
