@@ -18,6 +18,8 @@ enum class Permission(val ownerOnly: Boolean, val grantable: Boolean = false) {
     START_INSPECTION(ownerOnly = false),
     MANAGE_CONTACTS(ownerOnly = false),
     MANAGE_REMINDERS(ownerOnly = false),
+    /** Chat propietario ↔ trabajador (#74); cada trabajador solo en su conversación. */
+    CHAT(ownerOnly = false),
 
     // --- Solo propietario, salvo que se lo otorgue a un trabajador ---
     /** Balance y totales de ingresos/egresos (inicio, historial) y la pantalla de Reportes. */
