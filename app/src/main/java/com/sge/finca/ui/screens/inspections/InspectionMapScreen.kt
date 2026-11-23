@@ -77,6 +77,38 @@ fun InspectionMapScreen(
         onShown = viewModel::onGpsMessageShown,
     )
 
+    // Potreros (#71): guardar el área recién cerrada, ver/renombrar/eliminar y sus avisos.
+    LaunchedEffect(state.paddockMessage) {
+        state.paddockMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.onPaddockMessageShown()
+        }
+    }
+    state.paddockDraft?.let { draft ->
+        SavePaddockDialog(
+            areaM2 = draft.areaM2,
+            suggestedName = "Potrero ${state.paddocks.size + 1}",
+            onSave = viewModel::onSavePaddock,
+            onDismiss = viewModel::onDiscardPaddock,
+        )
+    }
+    var selectedPaddockId by remember { mutableStateOf<String?>(null) }
+    state.paddocks.firstOrNull { it.id == selectedPaddockId }?.let { paddock ->
+        PaddockDetailDialog(
+            paddock = paddock,
+            canManage = state.canManagePaddocks,
+            onRename = { name ->
+                viewModel.onRenamePaddock(paddock.id, name)
+                selectedPaddockId = null
+            },
+            onDelete = {
+                viewModel.onDeletePaddock(paddock.id)
+                selectedPaddockId = null
+            },
+            onDismiss = { selectedPaddockId = null },
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -134,6 +166,9 @@ fun InspectionMapScreen(
                                 bottom = controlsHeight,
                             ),
                         ) {
+                            state.paddocks.forEach { paddock ->
+                                PaddockOverlay(paddock, onClick = { selectedPaddockId = paddock.id })
+                            }
                             if (state.routePoints.size >= 2) {
                                 Polyline(
                                     points = state.routePoints.map {
