@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -51,6 +52,7 @@ import java.util.Locale
 fun WorkersScreen(
     viewModel: WorkersViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
+    onOpenChat: (workerUid: String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
@@ -211,6 +213,7 @@ fun WorkersScreen(
                                         onGrantChange = { permission, granted ->
                                             viewModel.setGrant(worker.uid, permission, granted)
                                         },
+                                        onChat = { onOpenChat(worker.uid) },
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
@@ -232,13 +235,26 @@ fun WorkersScreen(
 }
 
 @Composable
-private fun WorkerCard(worker: WorkerSummary, onGrantChange: (Permission, Boolean) -> Unit) {
+private fun WorkerCard(
+    worker: WorkerSummary,
+    onGrantChange: (Permission, Boolean) -> Unit,
+    onChat: () -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = worker.name.ifBlank { worker.email.ifBlank { "Sin nombre" } },
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = worker.name.ifBlank { worker.email.ifBlank { "Sin nombre" } },
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                // Chat con el trabajador (#74); uno dado de baja ya no participa.
+                if (worker.isActive) {
+                    IconButton(onClick = onChat) {
+                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Escribirle")
+                    }
+                }
+            }
             if (worker.email.isNotBlank()) {
                 Text(worker.email, style = MaterialTheme.typography.bodyMedium)
             }
