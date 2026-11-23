@@ -1,8 +1,6 @@
-import { FieldValue } from 'firebase-admin/firestore';
-import { buildDataMessage, isDeadTokenError, isRecent, recipientUids } from './transactionMessage.js';
+import { claimOnce, sendToUsers } from './push.js';
+import { buildDataMessage, isRecent, recipientUids } from './transactionMessage.js';
 
-/** Código gRPC de Firestore cuando el documento ya existe (create() sobre uno existente). */
-const ALREADY_EXISTS = 6;
 const RESTART_DELAY_MS = 30_000;
 
 /**
@@ -69,7 +67,7 @@ export class TransactionNotifier {
       this.stats.skipped++;
       return;
     }
-    if (!(await this.claim(farmId, doc.id))) {
+    if (!(await claimOnce(this.db, `${farmId}_${doc.id}`, { farmId, transactionId: doc.id }))) {
       this.stats.skipped++;
       return;
     }
@@ -80,67 +78,20 @@ export class TransactionNotifier {
       transaction.createdBy,
       this.config.notifyAuthor,
     );
-    const targets = await this.tokensFor(uids);
-    if (targets.length === 0) {
-      this.log(`${farmId}/${doc.id}: sin destinatarios con token, no se envía`);
-      return;
-    }
-
     const message = buildDataMessage({
       farmId,
       transactionId: doc.id,
       transaction,
       farmName: farmSnap.get('name'),
     });
-    const result = await this.messaging.sendEachForMulticast({
-      ...message,
-      tokens: targets.map((t) => t.token),
-    });
-
-    this.stats.sent += result.successCount;
-    this.stats.failed += result.failureCount;
-    await this.removeDeadTokens(targets, result.responses);
-    this.log(`${farmId}/${doc.id}: enviado a ${result.successCount}/${targets.length} dispositivos`);
-  }
-
-  /** Marca la transacción como avisada. Devuelve false si otro proceso o evento ya lo hizo. */
-  async claim(farmId, transactionId) {
-    try {
-      await this.db.collection('notificationLog').doc(`${farmId}_${transactionId}`).create({
-        farmId,
-        transactionId,
-        notifiedAt: FieldValue.serverTimestamp(),
-      });
-      return true;
-    } catch (err) {
-      if (err.code === ALREADY_EXISTS) return false;
-      throw err;
+    const result = await sendToUsers({ db: this.db, messaging: this.messaging, uids, message, log: this.log });
+    if (result.targets === 0) {
+      this.log(`${farmId}/${doc.id}: sin destinatarios con token, no se envía`);
+      return;
     }
-  }
 
-  /** Tokens FCM de cada usuario (users/{uid}.fcmTokens), uno por celular donde inició sesión. */
-  async tokensFor(uids) {
-    if (uids.length === 0) return [];
-    const snaps = await this.db.getAll(...uids.map((uid) => this.db.collection('users').doc(uid)));
-    return snaps.flatMap((snap) =>
-      (snap.get('fcmTokens') ?? [])
-        .filter((token) => typeof token === 'string' && token.length > 0)
-        .map((token) => ({ uid: snap.id, token })),
-    );
-  }
-
-  async removeDeadTokens(targets, responses) {
-    const dead = responses
-      .map((response, i) => ({ response, target: targets[i] }))
-      .filter(({ response }) => !response.success && isDeadTokenError(response.error?.code));
-    await Promise.all(
-      dead.map(({ target }) =>
-        this.db
-          .collection('users')
-          .doc(target.uid)
-          .update({ fcmTokens: FieldValue.arrayRemove(target.token) }),
-      ),
-    );
-    if (dead.length > 0) this.log(`Se eliminaron ${dead.length} tokens inválidos`);
+    this.stats.sent += result.sent;
+    this.stats.failed += result.failed;
+    this.log(`${farmId}/${doc.id}: enviado a ${result.sent}/${result.targets} dispositivos`);
   }
 }
