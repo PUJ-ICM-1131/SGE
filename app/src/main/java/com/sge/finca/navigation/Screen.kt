@@ -15,6 +15,12 @@ sealed class Screen(val route: String) {
     /** Mapa único (#72): vacas, potreros e inspección. */
     data object FarmMap : Screen("farm_map")
 
+    // Chat propietario ↔ trabajador (#74). La conversación se identifica con el uid del trabajador.
+    data object ChatList : Screen("chats")
+    data object Chat : Screen("chat/{workerUid}") {
+        fun createRoute(workerUid: String) = "chat/$workerUid"
+    }
+
     // Alertas de vacas fuera de los potreros (#73); se abre desde la notificación.
     data object AlertDetail : Screen("alert_detail/{alertId}") {
         fun createRoute(alertId: String) = "alert_detail/$alertId"
