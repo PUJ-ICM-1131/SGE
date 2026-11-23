@@ -131,6 +131,22 @@ test('el dueño cambia roles y da de baja, pero no se quita el rol a sí mismo',
   await assertFails(updateDoc(doc(db(OWNER), `farms/${FARM}/members/${OWNER}`), { role: 'WORKER' }));
 });
 
+test('el dueño otorga y quita permisos de vista a un trabajador (#67)', async () => {
+  const ref = doc(db(OWNER), `farms/${FARM}/members/${WORKER}`);
+  await assertSucceeds(updateDoc(ref, { grants: ['VIEW_BALANCE'] }));
+  await assertSucceeds(updateDoc(ref, { grants: [] }));
+});
+
+test('el trabajador no puede otorgarse ni quitarse permisos (#67)', async () => {
+  const own = doc(db(WORKER), `farms/${FARM}/members/${WORKER}`);
+  await assertFails(updateDoc(own, { grants: ['VIEW_BALANCE'] }));
+  // Con un permiso ya otorgado sigue editando sus datos, pero no los permisos.
+  await env.withSecurityRulesDisabled((ctx) =>
+    updateDoc(doc(ctx.firestore(), `farms/${FARM}/members/${WORKER}`), { grants: ['VIEW_BALANCE'] }));
+  await assertSucceeds(updateDoc(own, { displayName: 'Pedro' }));
+  await assertFails(updateDoc(own, { grants: [] }));
+});
+
 test('un miembro inactivo pierde el acceso', async () => {
   await assertFails(getDoc(doc(db(INACTIVE), `farms/${FARM}/transactions/t1`)));
   await assertFails(setDoc(doc(db(INACTIVE), `farms/${FARM}/transactions/t7`), tx(INACTIVE)));
@@ -210,6 +226,12 @@ test('regenerar: el código anterior deja de servir (#29)', async () => {
 
 test('el dueño no puede unirse a su propia finca como trabajador', async () => {
   await assertFails(setDoc(doc(db(OWNER), `farms/${FARM}/members/${OWNER}`), { role: 'WORKER', isActive: true, joinedAt: 9, inviteCode: INVITE }));
+});
+
+test('unirse con código no trae permisos otorgados (#67)', async () => {
+  const ref = doc(db(NEWBIE), `farms/${FARM}/members/${NEWBIE}`);
+  await assertFails(setDoc(ref, { role: 'WORKER', isActive: true, joinedAt: 9, inviteCode: INVITE, grants: ['VIEW_BALANCE'] }));
+  await assertSucceeds(setDoc(ref, { role: 'WORKER', isActive: true, joinedAt: 9, inviteCode: INVITE }));
 });
 
 // ---------- Datos operativos y perfiles ----------
