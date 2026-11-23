@@ -3,6 +3,7 @@ import { applicationDefault, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { AlertForwarder } from './alertForwarder.js';
+import { ChatNotifier } from './chatNotifier.js';
 import { createPositionsClient } from './collarClient.js';
 import { loadConfig } from './config.js';
 import { PaddockWatcher } from './paddockWatcher.js';
@@ -24,6 +25,10 @@ const log = (msg) => console.log(msg);
 
 const notifier = new TransactionNotifier({ db, messaging, config, log });
 notifier.start();
+
+// Chat propietario ↔ trabajador (#74).
+const chat = new ChatNotifier({ db, messaging, config, log });
+chat.start();
 
 // Alertas de vacas fuera de los potreros (#73).
 const forwarder = new AlertForwarder({ db, messaging, log });
@@ -55,6 +60,7 @@ const health = createServer((req, res) => {
     ...notifier.stats,
     paddockAlerts: watcher?.stats ?? 'apagadas (falta COLLAR_API_KEY)',
     alertForwards: forwarder.stats,
+    chat: chat.stats,
   }));
 });
 health.listen(config.healthPort, config.healthHost, () => {
@@ -65,6 +71,7 @@ health.listen(config.healthPort, config.healthHost, () => {
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     notifier.stop();
+    chat.stop();
     forwarder.stop();
     watcher?.stop();
     health.close(() => process.exit(0));
