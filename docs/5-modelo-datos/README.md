@@ -157,7 +157,7 @@ que Room acepte el esquema resultante.
 ```
 users/{uid}                                   name, email, farmId, role, createdAt
 farms/{farmId}                                name, ownerUid, inviteCode, createdAt
-farms/{farmId}/members/{uid}                  role (OWNER | WORKER), name, email, joinedAt
+farms/{farmId}/members/{uid}                  role (OWNER | WORKER), name, email, joinedAt, grants
 farms/{farmId}/transactions/{id}
 farms/{farmId}/categories/{id}
 farms/{farmId}/animalRecords/{id}
@@ -217,13 +217,19 @@ class TransactionHistoryViewModel @Inject constructor(
 - **Sesión:** `SessionRepository.session` (`StateFlow<Session>`) combina usuario + perfil +
   membresía con listeners, así que el rol se actualiza en vivo. En la UI se lee con
   `SessionViewModel` (`session`, `currentUserRole`, `can(permission)`).
-- **Rutas protegidas:** `PermissionGate` en `AppNavigation` para Categorías, Trabajadores y
-  Editar transacción.
+- **Rutas protegidas:** `PermissionGate` en `AppNavigation` para Categorías, Trabajadores,
+  Editar transacción y Reportes.
+- **Permisos otorgables (#67):** un permiso con `grantable = true` es del propietario por defecto,
+  pero él puede otorgárselo a un trabajador desde Trabajadores. Se guarda en
+  `members/{uid}.grants` (lista de nombres de `Permission`) y llega en vivo a la sesión del
+  trabajador. Hoy el único es `VIEW_BALANCE` (balance y totales del inicio y del historial, y
+  Reportes). Las Security Rules impiden que un trabajador escriba sus propios `grants`.
 - **Security Rules:** `firebase/firestore.rules` (ver `firebase/README.md`).
 
 | Permiso | Propietario | Trabajador |
 |---|---|---|
-| Registrar transacción, ver historial y reportes | ✅ | ✅ |
+| Registrar transacción y ver historial | ✅ | ✅ |
+| Ver balance, totales y reportes | ✅ | Solo si el propietario se lo otorga (#67) |
 | Registrar animales, iniciar inspecciones, contactos, recordatorios | ✅ | ✅ |
 | Editar / eliminar transacciones | ✅ | ❌ |
 | Gestionar categorías y trabajadores | ✅ | ❌ |
