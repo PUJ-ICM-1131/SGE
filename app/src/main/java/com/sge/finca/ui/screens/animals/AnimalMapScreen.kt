@@ -1,5 +1,7 @@
 package com.sge.finca.ui.screens.animals
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -10,20 +12,26 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -51,6 +59,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.GoogleMapComposable
 import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
@@ -79,6 +88,32 @@ fun AnimalMapScreen(
     LaunchedEffect(mapboxFailed) {
         if (mapboxFailed) {
             snackbarHostState.showSnackbar("Mapbox no pudo cargar. Se muestra Google Maps.")
+        }
+    }
+
+    // Avisos del botón "centrar en mi ubicación" (#59): snackbar, nunca un diálogo.
+    val context = LocalContext.current
+    LaunchedEffect(state.gpsMessage) {
+        val message = state.gpsMessage ?: return@LaunchedEffect
+        try {
+            when (message) {
+                GpsMessage.LOCATION_OFF -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "No hay señal GPS: activa la ubicación del celular para centrar el mapa.",
+                        actionLabel = "Activar",
+                        duration = SnackbarDuration.Long,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                    }
+                }
+                GpsMessage.NO_SIGNAL -> snackbarHostState.showSnackbar(
+                    "Aún no hay señal GPS. Sal a cielo abierto e intenta de nuevo.",
+                )
+            }
+        } finally {
+            // Después de mostrarlo: limpiarlo antes reiniciaría este efecto y cortaría el aviso.
+            viewModel.onGpsMessageShown()
         }
     }
 
@@ -115,54 +150,68 @@ fun AnimalMapScreen(
                 onPermissionGranted = {
                     LaunchedEffect(Unit) { viewModel.onPermissionGranted() }
 
-                    if (useMapbox && hasMapboxToken && !mapboxFailed) {
-                        MapboxMapView(
-                            hasUserLocation = state.hasUserLocation,
-                            userLatitude = state.userLatitude,
-                            userLongitude = state.userLongitude,
-                            animals = state.animals,
-                            onAnimalSelected = viewModel::onAnimalSelected,
-                            onMapLoadError = {
-                                mapboxFailed = true
-                                useMapbox = false
-                            },
-                        )
-                    } else {
-                        val cameraPositionState = rememberCameraPositionState()
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (useMapbox && hasMapboxToken && !mapboxFailed) {
+                            MapboxMapView(
+                                hasUserLocation = state.hasUserLocation,
+                                userLatitude = state.userLatitude,
+                                userLongitude = state.userLongitude,
+                                animals = state.animals,
+                                onAnimalSelected = viewModel::onAnimalSelected,
+                                onMapLoadError = {
+                                    mapboxFailed = true
+                                    useMapbox = false
+                                },
+                                centerRequest = state.centerRequest,
+                            )
+                        } else {
+                            val cameraPositionState = rememberCameraPositionState()
 
-                        LaunchedEffect(state.hasUserLocation) {
-                            if (state.hasUserLocation) {
-                                cameraPositionState.animate(
-                                    CameraUpdateFactory.newLatLngZoom(
-                                        LatLng(state.userLatitude, state.userLongitude),
-                                        18f, // zoom inicial: más alto = más cerca (15 calle, 18 cuadra, 20 edificio)
-                                    ),
-                                )
-                            }
-                        }
-
-                        GoogleMap(
-                            modifier = Modifier.fillMaxSize(),
-                            cameraPositionState = cameraPositionState,
-                            properties = MapProperties(isMyLocationEnabled = true),
-                            onMapClick = { viewModel.onSelectionCleared() },
-                        ) {
-                            val context = LocalContext.current
-                            val density = LocalDensity.current
-                            val spritesByVariant = remember {
-                                val widthPx = with(density) { 48.dp.roundToPx() }
-                                CowVariant.entries.associateWith { CowSprites.load(context, widthPx, it) }
-                            }
-                            state.animals.forEach { tracked ->
-                                key(tracked.animal.id) {
-                                    AnimalMarker(
-                                        tracked = tracked,
-                                        sprites = spritesByVariant.getValue(CowVariant.fromId(tracked.animal.variant)),
-                                        onClick = { viewModel.onAnimalSelected(tracked.animal.id) },
+                            LaunchedEffect(state.hasUserLocation, state.centerRequest) {
+                                if (state.hasUserLocation) {
+                                    cameraPositionState.animate(
+                                        CameraUpdateFactory.newLatLngZoom(
+                                            LatLng(state.userLatitude, state.userLongitude),
+                                            18f, // zoom inicial: más alto = más cerca (15 calle, 18 cuadra, 20 edificio)
+                                        ),
                                     )
                                 }
                             }
+
+                            GoogleMap(
+                                modifier = Modifier.fillMaxSize(),
+                                cameraPositionState = cameraPositionState,
+                                properties = MapProperties(isMyLocationEnabled = true),
+                                // El botón propio (#59) reemplaza al de Google, que no avisa si el
+                                // GPS está apagado.
+                                uiSettings = MapUiSettings(myLocationButtonEnabled = false),
+                                onMapClick = { viewModel.onSelectionCleared() },
+                            ) {
+                                val context = LocalContext.current
+                                val density = LocalDensity.current
+                                val spritesByVariant = remember {
+                                    val widthPx = with(density) { 48.dp.roundToPx() }
+                                    CowVariant.entries.associateWith { CowSprites.load(context, widthPx, it) }
+                                }
+                                state.animals.forEach { tracked ->
+                                    key(tracked.animal.id) {
+                                        AnimalMarker(
+                                            tracked = tracked,
+                                            sprites = spritesByVariant.getValue(CowVariant.fromId(tracked.animal.variant)),
+                                            onClick = { viewModel.onAnimalSelected(tracked.animal.id) },
+                                        )
+                                    }
+                                }
+                            }
                         }
+
+                        CenterOnMeButton(
+                            isLocating = state.isLocating,
+                            onClick = viewModel::onCenterOnMeClicked,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(12.dp),
+                        )
                     }
                 },
             )
@@ -301,6 +350,22 @@ private fun AnimalInfoCard(
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.Close, contentDescription = "Cerrar")
             }
+        }
+    }
+}
+
+/** Centra el mapa en el usuario (#59). Mientras busca la posición muestra un indicador. */
+@Composable
+private fun CenterOnMeButton(
+    isLocating: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SmallFloatingActionButton(onClick = onClick, modifier = modifier) {
+        if (isLocating) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+        } else {
+            Icon(Icons.Default.MyLocation, contentDescription = "Centrar en mi ubicación")
         }
     }
 }

@@ -48,6 +48,8 @@ fun MapboxMapView(
     onAnimalSelected: (String) -> Unit,
     onMapLoadError: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Al cambiar, vuelve a centrar en el usuario aunque la posición sea la misma (#59). */
+    centerRequest: Int = 0,
 ) {
     val currentOnMapLoadError = rememberUpdatedState(onMapLoadError)
     // Primer toque: origen. Segundo toque: destino. El tercero inicia otra selección.
@@ -77,7 +79,7 @@ fun MapboxMapView(
         }
     }
 
-    LaunchedEffect(hasUserLocation, userLatitude, userLongitude) {
+    LaunchedEffect(hasUserLocation, userLatitude, userLongitude, centerRequest) {
         if (hasUserLocation) {
             viewportState.easeTo(
                 cameraOptions {
