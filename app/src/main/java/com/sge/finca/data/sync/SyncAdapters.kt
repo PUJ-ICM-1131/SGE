@@ -5,11 +5,13 @@ import com.sge.finca.data.local.SyncStatus
 import com.sge.finca.data.local.dao.AnimalDao
 import com.sge.finca.data.local.dao.CategoryDao
 import com.sge.finca.data.local.dao.FarmContactDao
+import com.sge.finca.data.local.dao.PaddockDao
 import com.sge.finca.data.local.dao.ReminderDao
 import com.sge.finca.data.local.dao.TransactionDao
 import com.sge.finca.data.local.entity.AnimalEntity
 import com.sge.finca.data.local.entity.CategoryEntity
 import com.sge.finca.data.local.entity.FarmContactEntity
+import com.sge.finca.data.local.entity.PaddockEntity
 import com.sge.finca.data.local.entity.ReminderEntity
 import com.sge.finca.data.local.entity.TransactionEntity
 import com.sge.finca.data.remote.FirestorePaths
@@ -17,6 +19,7 @@ import com.sge.finca.data.remote.toAnimalEntity
 import com.sge.finca.data.remote.toCategoryEntity
 import com.sge.finca.data.remote.toFarmContactEntity
 import com.sge.finca.data.remote.toFirestore
+import com.sge.finca.data.remote.toPaddockEntity
 import com.sge.finca.data.remote.toReminderEntity
 import com.sge.finca.data.remote.toTransactionEntity
 import javax.inject.Inject
@@ -188,6 +191,31 @@ class AnimalSyncAdapter @Inject constructor(
         dao.observeCountByStatus(farmId, status.name)
 }
 
+/** Potreros de la finca (#71). */
+class PaddockSyncAdapter @Inject constructor(
+    private val dao: PaddockDao,
+) : SyncAdapter<PaddockEntity> {
+    override val collection = FirestorePaths.PADDOCKS
+    override fun farmId(item: PaddockEntity) = item.farmId
+    override fun id(item: PaddockEntity) = item.id
+    override fun status(item: PaddockEntity) = item.syncStatus
+    override fun updatedAt(item: PaddockEntity): Long? = item.updatedAt
+    override suspend fun pendingUploads() = dao.getPendingUpload()
+    override fun toFirestore(item: PaddockEntity) = item.toFirestore()
+    override suspend fun markSynced(item: PaddockEntity) =
+        dao.markSynced(item.farmId, item.id, item.updatedAt)
+    override suspend fun markFailed(item: PaddockEntity) =
+        dao.markFailed(item.farmId, item.id, item.updatedAt)
+    override fun fromFirestore(doc: DocumentSnapshot, farmId: String) = doc.toPaddockEntity(farmId)
+    override suspend fun getLocal(farmId: String, id: String) = dao.getById(farmId, id)
+    override suspend fun upsert(items: List<PaddockEntity>) = dao.upsertAll(items)
+    override suspend fun deleteLocal(farmId: String, id: String) = dao.delete(farmId, id)
+    override suspend fun syncedIds(farmId: String) = dao.getSyncedIds(farmId)
+    override suspend fun resetFailed(farmId: String) = dao.resetFailed(farmId)
+    override fun observeCount(farmId: String, status: SyncStatus) =
+        dao.observeCountByStatus(farmId, status.name)
+}
+
 /**
  * Todas las colecciones que se sincronizan. Las categorías van primero para que, en una finca
  * nueva, lleguen antes que las transacciones que las usan.
@@ -199,6 +227,8 @@ class SyncAdapters @Inject constructor(
     contacts: ContactSyncAdapter,
     reminders: ReminderSyncAdapter,
     animals: AnimalSyncAdapter,
+    paddocks: PaddockSyncAdapter,
 ) {
-    val all: List<SyncAdapter<*>> = listOf(categories, transactions, contacts, reminders, animals)
+    val all: List<SyncAdapter<*>> =
+        listOf(categories, transactions, contacts, reminders, animals, paddocks)
 }
