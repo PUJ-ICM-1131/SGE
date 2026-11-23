@@ -184,12 +184,7 @@ fun AnimalMapScreen(
                                 contentPadding = googlePadding,
                                 onMapClick = { viewModel.onSelectionCleared() },
                             ) {
-                                val context = LocalContext.current
-                                val density = LocalDensity.current
-                                val spritesByVariant = remember {
-                                    val widthPx = with(density) { 48.dp.roundToPx() }
-                                    CowVariant.entries.associateWith { CowSprites.load(context, widthPx, it) }
-                                }
+                                val spritesByVariant = rememberCowSprites()
                                 state.animals.forEach { tracked ->
                                     key(tracked.animal.id) {
                                         AnimalMarker(
@@ -227,6 +222,17 @@ fun AnimalMapScreen(
     }
 }
 
+/** Sprites de las apariencias de vaca, cargados una sola vez por pantalla. */
+@Composable
+internal fun rememberCowSprites(): Map<CowVariant, CowSprites> {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    return remember {
+        val widthPx = with(density) { 48.dp.roundToPx() }
+        CowVariant.entries.associateWith { CowSprites.load(context, widthPx, it) }
+    }
+}
+
 /**
  * Marcador de vaca animado con sprites:
  *  - Desliza suavemente hacia cada nueva posición (interpolación lineal).
@@ -236,7 +242,7 @@ fun AnimalMapScreen(
  */
 @Composable
 @GoogleMapComposable
-private fun AnimalMarker(
+internal fun AnimalMarker(
     tracked: TrackedAnimal,
     sprites: CowSprites,
     onClick: () -> Unit,
@@ -299,7 +305,7 @@ private const val SLIDE_MILLIS = 2000
 private const val RUN_SPEED = 2.5f
 
 @Composable
-private fun AnimalInfoCard(
+internal fun AnimalInfoCard(
     tracked: TrackedAnimal,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
