@@ -234,6 +234,37 @@ test('unirse con código no trae permisos otorgados (#67)', async () => {
   await assertSucceeds(setDoc(ref, { role: 'WORKER', isActive: true, joinedAt: 9, inviteCode: INVITE }));
 });
 
+// ---------- Potreros (#71) ----------
+
+function paddock(createdBy, extra = {}) {
+  return {
+    name: 'Potrero 1', areaM2: 10000, createdBy, createdAt: 10, updatedAt: 10,
+    points: [{ lat: 4.6, lng: -74.1 }, { lat: 4.6, lng: -74.099 }, { lat: 4.601, lng: -74.099 }],
+    ...extra,
+  };
+}
+
+test('el trabajador guarda potreros a su nombre y solo los miembros los leen (#71)', async () => {
+  await assertSucceeds(setDoc(doc(db(WORKER), `farms/${FARM}/paddocks/p1`), paddock(WORKER)));
+  await assertSucceeds(getDoc(doc(db(OWNER), `farms/${FARM}/paddocks/p1`)));
+  await assertFails(getDoc(doc(db(STRANGER), `farms/${FARM}/paddocks/p1`)));
+});
+
+test('un potrero necesita al menos 3 puntos y a su autor real (#71)', async () => {
+  await assertFails(setDoc(doc(db(WORKER), `farms/${FARM}/paddocks/p2`), paddock(OWNER)));
+  await assertFails(setDoc(doc(db(WORKER), `farms/${FARM}/paddocks/p3`),
+    paddock(WORKER, { points: [{ lat: 4.6, lng: -74.1 }, { lat: 4.6, lng: -74.099 }] })));
+});
+
+test('solo el dueño renombra o elimina potreros (#71)', async () => {
+  await env.withSecurityRulesDisabled((ctx) =>
+    setDoc(doc(ctx.firestore(), `farms/${FARM}/paddocks/p1`), paddock(WORKER)));
+  await assertFails(updateDoc(doc(db(WORKER), `farms/${FARM}/paddocks/p1`), { name: 'Otro' }));
+  await assertFails(deleteDoc(doc(db(WORKER), `farms/${FARM}/paddocks/p1`)));
+  await assertSucceeds(updateDoc(doc(db(OWNER), `farms/${FARM}/paddocks/p1`), { name: 'Potrero norte' }));
+  await assertSucceeds(deleteDoc(doc(db(OWNER), `farms/${FARM}/paddocks/p1`)));
+});
+
 // ---------- Datos operativos y perfiles ----------
 
 test('el trabajador registra animales, inspecciones, contactos y recordatorios', async () => {
