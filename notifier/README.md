@@ -61,6 +61,16 @@ farms/{finca}/paddocks      ──listener────────────�
 Variables (en `/etc/sge-notifier/env`): `COLLAR_API_URL` (por defecto `http://127.0.0.1:8080`),
 `COLLAR_API_KEY` y `GEOFENCE_INTERVAL_SECONDS` (por defecto 15, mínimo 5).
 
+## Chat propietario ↔ trabajador (#74)
+
+Con cada mensaje la app actualiza `farms/{finca}/chats/{trabajador}` (`lastMessage`,
+`lastMessageAt`, `lastSenderUid`). El servicio escucha esos documentos y avisa al otro lado:
+si escribe el trabajador, a los propietarios; si escribe el propietario, a ese trabajador.
+
+- Solo avisa mensajes recientes (`MAX_AGE_MINUTES`) y nunca dos veces el mismo
+  (`notificationLog/chat_{finca}_{trabajador}_{hora}`).
+- No necesita índices: escucha `chats` sin filtros.
+
 ## Configuración en Firebase (una sola vez)
 
 ### 1. Cuenta de servicio
@@ -141,6 +151,7 @@ src/
   paddockWatcher.js        potreros + posiciones de collar-api → alertas y aviso al propietario
   alertForwarder.js        reenvío de alertas a los trabajadores
   collarClient.js          cliente de /v1/positions de collar-api
+  chatNotifier.js          aviso de mensajes nuevos del chat al otro participante
 test/                      pruebas con node:test
 deploy/                    servicio systemd e instalador
 ```
