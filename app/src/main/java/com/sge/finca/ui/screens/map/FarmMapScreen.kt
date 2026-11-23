@@ -196,8 +196,6 @@ fun FarmMapScreen(
                                     )
                                 }
                             }
-                            val sprites = rememberCowSprites()
-
                             GoogleMap(
                                 modifier = Modifier.fillMaxSize(),
                                 cameraPositionState = cameraPositionState,
@@ -223,6 +221,9 @@ fun FarmMapScreen(
                                         width = 8f,
                                     )
                                 }
+                                // Aquí y no antes del GoogleMap: BitmapDescriptorFactory exige que
+                                // Google Maps ya esté inicializado, si no la app se cierra.
+                                val sprites = rememberCowSprites()
                                 herd.animals.forEach { tracked ->
                                     key(tracked.animal.id) {
                                         AnimalMarker(
