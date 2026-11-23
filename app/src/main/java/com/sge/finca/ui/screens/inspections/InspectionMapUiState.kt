@@ -1,5 +1,7 @@
 package com.sge.finca.ui.screens.inspections
 
+import com.sge.finca.domain.model.Coordinate
+import com.sge.finca.domain.model.Paddock
 import com.sge.finca.platform.location.LocationState
 import com.sge.finca.ui.components.GpsMessage
 
@@ -22,4 +24,14 @@ data class InspectionMapUiState(
     val centerRequest: Int = 0,
     /** Aviso pendiente de mostrar en el snackbar; la pantalla lo limpia al mostrarlo. */
     val gpsMessage: GpsMessage? = null,
+    /** Potreros de la finca (#71). */
+    val paddocks: List<Paddock> = emptyList(),
+    /** Área que se acaba de cerrar al finalizar la inspección y se puede guardar como potrero. */
+    val paddockDraft: PaddockDraft? = null,
+    /** Renombrar o eliminar potreros: solo el propietario. */
+    val canManagePaddocks: Boolean = false,
+    /** Aviso pendiente sobre potreros ("Potrero guardado", errores). */
+    val paddockMessage: String? = null,
 )
+
+data class PaddockDraft(val points: List<Coordinate>, val areaM2: Double)

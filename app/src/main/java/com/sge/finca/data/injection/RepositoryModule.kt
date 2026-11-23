@@ -3,6 +3,7 @@ package com.sge.finca.data.injection
 import com.sge.finca.data.repository.CategoryRepositoryImpl
 import com.sge.finca.data.repository.ContactRepositoryImpl
 import com.sge.finca.data.repository.FarmRepositoryImpl
+import com.sge.finca.data.repository.PaddockRepositoryImpl
 import com.sge.finca.data.repository.ReminderRepositoryImpl
 import com.sge.finca.data.repository.SessionRepositoryImpl
 import com.sge.finca.data.repository.TransactionRepositoryImpl
@@ -10,6 +11,7 @@ import com.sge.finca.data.repository.UserRepositoryImpl
 import com.sge.finca.domain.repository.CategoryRepository
 import com.sge.finca.domain.repository.ContactRepository
 import com.sge.finca.domain.repository.FarmRepository
+import com.sge.finca.domain.repository.PaddockRepository
 import com.sge.finca.domain.repository.ReminderRepository
 import com.sge.finca.domain.repository.SessionRepository
 import com.sge.finca.domain.repository.TransactionRepository
@@ -52,4 +54,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindSessionRepository(impl: SessionRepositoryImpl): SessionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPaddockRepository(impl: PaddockRepositoryImpl): PaddockRepository
 }

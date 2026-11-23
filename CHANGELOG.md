@@ -4,6 +4,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 ### Added
+- Potreros (#71): al finalizar una inspección que vuelve a 20 m o menos del inicio y encierra al menos 100 m², se puede guardar como potrero con nombre. Se dibuja con relleno translúcido y etiqueta con su área (m², y hectáreas desde 1 ha); el propietario lo renombra o elimina al tocarlo. Sincronizado con `farms/{farmId}/paddocks` (BD v9) y con Security Rules y pruebas.
 - Animales compartidos por finca (#62): se filtran por `farmId` en vez de por usuario y se sincronizan con `farms/{farmId}/animalRecords` (crear, editar y borrar llegan a todos los miembros). Los animales registrados antes pasan a la finca activa de quien los creó. BD v8 (`animals.updatedAt`).
 - Sincronización offline (#32): subida con WorkManager (`SyncWorker`) usando el mismo id en Room y Firestore, reintentos con espera exponencial, estado `FAILED` sin reintentos infinitos cuando las Security Rules rechazan, borrados pendientes (BD v7), listeners Firestore → Room con last-write-wins, y aviso de registros pendientes en el inicio y en el historial.
 - Roles y permisos (#28): propietario y trabajador con tabla única de permisos (`Permission`), sesión con el rol en vivo (`SessionRepository` / `SessionViewModel`), verificación de permisos en los repositorios, opciones de propietario ocultas para el trabajador, rutas restringidas protegidas y Security Rules de Firestore con pruebas en `firebase/`.

@@ -177,6 +177,22 @@ service cloud.firestore {
           allow read, write: if isMember(farmId);
         }
       }
+
+      // ---------- Potreros (#71) ----------
+      // Cualquier miembro guarda el potrero que recorrió, a su nombre y con al menos 3 puntos.
+      // Renombrar o eliminar, solo el dueño (igual que las transacciones).
+      match /paddocks/{paddockId} {
+        allow read: if isMember(farmId);
+        allow create: if isMember(farmId)
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.points is list
+          && request.resource.data.points.size() >= 3;
+        allow update: if isOwner(farmId)
+          && !changes().hasAny(['createdBy', 'createdAt'])
+          && request.resource.data.points is list
+          && request.resource.data.points.size() >= 3;
+        allow delete: if isOwner(farmId);
+      }
     }
 
     // Cualquier otra ruta queda cerrada (Firestore niega por defecto).

@@ -2,14 +2,20 @@ package com.sge.finca.ui.screens.inspections
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sge.finca.domain.model.Coordinate
 import com.sge.finca.domain.model.InspectionRoute
+import com.sge.finca.domain.model.PaddockGeometry
+import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.model.RoutePoint
 import com.sge.finca.domain.repository.InspectionRepository
+import com.sge.finca.domain.repository.PaddockRepository
+import com.sge.finca.domain.repository.SessionRepository
 import com.sge.finca.platform.location.CenterOnMeResult
 import com.sge.finca.platform.location.LocationHelper
 import com.sge.finca.platform.location.LocationState
 import com.sge.finca.ui.components.GpsMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -18,6 +24,10 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -31,6 +41,8 @@ import kotlin.math.sqrt
 class InspectionMapViewModel @Inject constructor(
     private val locationHelper: LocationHelper,
     private val inspectionRepository: InspectionRepository,
+    private val paddockRepository: PaddockRepository,
+    sessionRepository: SessionRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InspectionMapUiState())
@@ -46,6 +58,25 @@ class InspectionMapViewModel @Inject constructor(
     private var accumulatedSeconds = 0L
     private var currentRouteId: String? = null
     private var pointOrder = 0
+    private var farmId: String? = null
+
+    init {
+        // Potreros de la finca activa (#71); se recargan si cambia la finca o el rol.
+        viewModelScope.launch {
+            sessionRepository.session
+                .filter { !it.loading }
+                .map { it.farmId?.takeIf(String::isNotBlank) to it.can(Permission.CONFIGURE_FARM) }
+                .distinctUntilChanged()
+                .collectLatest { (farmId, canManage) ->
+                    this@InspectionMapViewModel.farmId = farmId
+                    _uiState.update { it.copy(canManagePaddocks = canManage, paddocks = emptyList()) }
+                    if (farmId == null) return@collectLatest
+                    paddockRepository.observePaddocks(farmId).collect { paddocks ->
+                        _uiState.update { it.copy(paddocks = paddocks) }
+                    }
+                }
+        }
+    }
 
     fun onPermissionGranted() {
         viewModelScope.launch {
@@ -143,13 +174,58 @@ class InspectionMapViewModel @Inject constructor(
         timerJob?.cancel()
         gpsWatchdogJob?.cancel()
         val state = _uiState.value
-        _uiState.update { it.copy(isTracking = false, isPaused = false, hasGpsSignal = false) }
+        // Si se volvió cerca del inicio, el recorrido encierra un área que se puede guardar (#71).
+        val walked = state.routePoints.map { Coordinate(it.latitude, it.longitude) }
+        val draft = walked.takeIf(PaddockGeometry::isClosedArea)
+            ?.let { PaddockDraft(it, PaddockGeometry.areaM2(it)) }
+        _uiState.update {
+            it.copy(isTracking = false, isPaused = false, hasGpsSignal = false, paddockDraft = draft)
+        }
 
         viewModelScope.launch {
             currentRouteId?.let { id ->
                 inspectionRepository.finishRoute(id, state.distanceMeters)
             }
             currentRouteId = null
+        }
+    }
+
+    fun onSavePaddock(name: String) {
+        val draft = _uiState.value.paddockDraft ?: return
+        paddockAction("No se pudo guardar el potrero") { farmId ->
+            paddockRepository.create(farmId, name, draft.points)
+            _uiState.update { it.copy(paddockDraft = null, paddockMessage = "Potrero guardado") }
+        }
+    }
+
+    fun onDiscardPaddock() {
+        _uiState.update { it.copy(paddockDraft = null) }
+    }
+
+    fun onRenamePaddock(id: String, name: String) =
+        paddockAction("No se pudo renombrar el potrero") { paddockRepository.rename(it, id, name) }
+
+    fun onDeletePaddock(id: String) =
+        paddockAction("No se pudo eliminar el potrero") { paddockRepository.delete(it, id) }
+
+    fun onPaddockMessageShown() {
+        _uiState.update { it.copy(paddockMessage = null) }
+    }
+
+    /** Los repositorios validan permisos y datos; su mensaje va al snackbar. */
+    private fun paddockAction(errorMessage: String, action: suspend (farmId: String) -> Unit) {
+        val farmId = farmId ?: run {
+            _uiState.update { it.copy(paddockMessage = "Tu cuenta aún no pertenece a una finca") }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                action(farmId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(paddockMessage = e.message ?: errorMessage) }
+            }
         }
     }
 

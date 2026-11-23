@@ -6,9 +6,12 @@ import com.sge.finca.data.local.entity.AnimalEntity
 import com.sge.finca.data.local.entity.CategoryEntity
 import com.sge.finca.data.local.entity.FarmContactEntity
 import com.sge.finca.data.local.entity.InspectionRouteEntity
+import com.sge.finca.data.local.entity.PaddockEntity
 import com.sge.finca.data.local.entity.ReminderEntity
 import com.sge.finca.data.local.entity.RoutePointEntity
 import com.sge.finca.data.local.entity.TransactionEntity
+import com.sge.finca.domain.model.Coordinate
+import com.sge.finca.domain.model.PaddockGeometry
 import com.sge.finca.domain.model.TransactionType
 import java.util.Locale
 
@@ -215,6 +218,39 @@ fun DocumentSnapshot.toRoutePointEntity(routeId: String): RoutePointEntity? {
         longitude = getDouble("longitude") ?: return null,
         accuracy = getDouble("accuracy")?.toFloat() ?: 0f,
         timestamp = getLong("timestamp") ?: 0L,
+        syncStatus = SyncStatus.SYNCED,
+    )
+}
+
+// ---------- Potreros (#71) ----------
+// points va como [{lat, lng}]: es el formato que lee el notifier de alertas (#73).
+
+fun PaddockEntity.toFirestore(): Map<String, Any?> = mapOf(
+    "name" to name,
+    "points" to PaddockEntity.decodePoints(points).map { mapOf("lat" to it.latitude, "lng" to it.longitude) },
+    "areaM2" to areaM2,
+    "createdBy" to createdBy,
+    "createdAt" to createdAt,
+    "updatedAt" to updatedAt,
+)
+
+fun DocumentSnapshot.toPaddockEntity(farmId: String): PaddockEntity? {
+    val points = (get("points") as? List<*>).orEmpty().mapNotNull { raw ->
+        val point = raw as? Map<*, *> ?: return@mapNotNull null
+        val lat = (point["lat"] as? Number)?.toDouble() ?: return@mapNotNull null
+        val lng = (point["lng"] as? Number)?.toDouble() ?: return@mapNotNull null
+        Coordinate(lat, lng)
+    }
+    if (points.size < 3) return null
+    return PaddockEntity(
+        id = id,
+        farmId = farmId,
+        name = getString("name") ?: return null,
+        points = PaddockEntity.encodePoints(points),
+        areaM2 = getDouble("areaM2") ?: PaddockGeometry.areaM2(points),
+        createdBy = getString("createdBy") ?: "",
+        createdAt = getLong("createdAt") ?: 0L,
+        updatedAt = getLong("updatedAt") ?: 0L,
         syncStatus = SyncStatus.SYNCED,
     )
 }
