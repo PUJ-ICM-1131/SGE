@@ -15,6 +15,7 @@ class PermissionTest {
         Permission.MANAGE_WORKERS,
         Permission.VIEW_INVITE_CODE,
         Permission.CONFIGURE_FARM,
+        Permission.FORWARD_ALERTS,
     )
 
     /** Solo del propietario por defecto, pero él puede otorgárselos a un trabajador (#67). */
