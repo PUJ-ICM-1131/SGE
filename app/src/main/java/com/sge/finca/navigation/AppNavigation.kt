@@ -20,6 +20,10 @@ import com.sge.finca.ui.screens.animals.AnimalListViewModel
 import com.sge.finca.ui.screens.alerts.AlertDetailScreen
 import com.sge.finca.ui.screens.alerts.AlertDetailViewModel
 import com.sge.finca.ui.screens.animals.AnimalMapViewModel
+import com.sge.finca.ui.screens.chat.ChatListScreen
+import com.sge.finca.ui.screens.chat.ChatListViewModel
+import com.sge.finca.ui.screens.chat.ChatScreen
+import com.sge.finca.ui.screens.chat.ChatViewModel
 import com.sge.finca.ui.screens.animals.RegisterAnimalScreen
 import com.sge.finca.ui.screens.animals.RegisterAnimalViewModel
 import com.sge.finca.ui.screens.auth.BiometricPromptHandler
@@ -213,7 +217,46 @@ fun AppNavigation(
                 showCategories = session.can(Permission.MANAGE_CATEGORIES),
                 showWorkers = session.can(Permission.MANAGE_WORKERS),
                 showReports = session.can(Permission.VIEW_BALANCE),
+                // Chat (#74): el propietario elige el trabajador; el trabajador va a la suya.
+                onNavigateToMessages = {
+                    if (session.isOwner) {
+                        navController.navigate(Screen.ChatList.route)
+                    } else {
+                        session.uid?.let { navController.navigate(Screen.Chat.createRoute(it)) }
+                    }
+                },
+                messagesSubtitle = if (session.isOwner) "Chat con tus trabajadores" else "Chat con el propietario",
+                showMessages = session.can(Permission.CHAT),
             )
+        }
+
+        // Chat propietario ↔ trabajador (#74).
+        composable(Screen.ChatList.route) {
+            PermissionGate(
+                session = session,
+                permission = Permission.MANAGE_WORKERS,
+                onNavigateBack = { navController.popBackStack() },
+            ) {
+                val chatListViewModel: ChatListViewModel = hiltViewModel()
+                ChatListScreen(
+                    viewModel = chatListViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenChat = { uid -> navController.navigate(Screen.Chat.createRoute(uid)) },
+                )
+            }
+        }
+        composable(
+            route = Screen.Chat.route,
+            arguments = listOf(navArgument("workerUid") { type = NavType.StringType }),
+        ) {
+            PermissionGate(
+                session = session,
+                permission = Permission.CHAT,
+                onNavigateBack = { navController.popBackStack() },
+            ) {
+                val chatViewModel: ChatViewModel = hiltViewModel()
+                ChatScreen(viewModel = chatViewModel, onNavigateBack = { navController.popBackStack() })
+            }
         }
 
         // Unirse a una finca con código (#29). Al terminar vuelve al inicio, que ya ve la finca.
@@ -277,7 +320,10 @@ fun AppNavigation(
                 permission = Permission.MANAGE_WORKERS,
                 onNavigateBack = { navController.popBackStack() },
             ) {
-                WorkersScreen(onNavigateBack = { navController.popBackStack() })
+                WorkersScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenChat = { uid -> navController.navigate(Screen.Chat.createRoute(uid)) },
+                )
             }
         }
         composable(Screen.InspectionHistory.route) {
