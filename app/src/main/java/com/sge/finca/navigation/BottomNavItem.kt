@@ -1,7 +1,6 @@
 package com.sge.finca.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Agriculture
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
@@ -18,7 +17,6 @@ enum class BottomNavItem(
 ) {
     HOME(Screen.Home, Icons.Default.Home, "Inicio"),
     TRANSACTIONS(Screen.TransactionHistory, Icons.Default.Receipt, "Transacciones"),
-    INSPECTIONS(Screen.InspectionMap, Icons.Default.Map, "Inspecciones"),
-    ANIMALS(Screen.AnimalMap, Icons.Default.Agriculture, "Ganado"),
+    MAP(Screen.FarmMap, Icons.Default.Map, "Mapa"),
     MORE(Screen.More, Icons.Default.Menu, "Más"),
 }
