@@ -4,10 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,209 +15,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Polyline
-import com.google.maps.android.compose.rememberCameraPositionState
-import com.sge.finca.ui.components.CenterOnMeButton
-import com.sge.finca.ui.components.GpsMessageEffect
-import com.sge.finca.ui.components.LocationPermissionHandler
-import com.sge.finca.ui.components.onHeightChanged
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun InspectionMapScreen(
-    viewModel: InspectionMapViewModel,
-    onNavigateToHistory: () -> Unit,
-    onNavigateToRouteMap: () -> Unit = {},
-) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(Unit) {
-        viewModel.gpsLostEvent.collect {
-            snackbarHostState.showSnackbar("Señal GPS perdida. Verifica tu ubicación.")
-        }
-    }
-
-    // Avisos del botón "centrar en mi ubicación": snackbar, nunca un diálogo.
-    GpsMessageEffect(
-        message = state.gpsMessage,
-        snackbarHostState = snackbarHostState,
-        onShown = viewModel::onGpsMessageShown,
-    )
-
-    // Potreros (#71): guardar el área recién cerrada, ver/renombrar/eliminar y sus avisos.
-    LaunchedEffect(state.paddockMessage) {
-        state.paddockMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.onPaddockMessageShown()
-        }
-    }
-    state.paddockDraft?.let { draft ->
-        SavePaddockDialog(
-            areaM2 = draft.areaM2,
-            suggestedName = "Potrero ${state.paddocks.size + 1}",
-            onSave = viewModel::onSavePaddock,
-            onDismiss = viewModel::onDiscardPaddock,
-        )
-    }
-    var selectedPaddockId by remember { mutableStateOf<String?>(null) }
-    state.paddocks.firstOrNull { it.id == selectedPaddockId }?.let { paddock ->
-        PaddockDetailDialog(
-            paddock = paddock,
-            canManage = state.canManagePaddocks,
-            onRename = { name ->
-                viewModel.onRenamePaddock(paddock.id, name)
-                selectedPaddockId = null
-            },
-            onDelete = {
-                viewModel.onDeletePaddock(paddock.id)
-                selectedPaddockId = null
-            },
-            onDismiss = { selectedPaddockId = null },
-        )
-    }
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Inspección de Campo") },
-                actions = {
-                    IconButton(onClick = onNavigateToRouteMap) {
-                        Icon(Icons.Default.Straighten, contentDescription = "Medir distancia")
-                    }
-                    IconButton(onClick = onNavigateToHistory) {
-                        Icon(Icons.Default.History, contentDescription = "Historial")
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            LocationPermissionHandler(
-                onPermissionGranted = {
-                    LaunchedEffect(Unit) { viewModel.onPermissionGranted() }
-
-                    val cameraPositionState = rememberCameraPositionState()
-
-                    LaunchedEffect(state.hasUserLocation, state.centerRequest) {
-                        if (state.hasUserLocation) {
-                            cameraPositionState.animate(
-                                CameraUpdateFactory.newLatLngZoom(
-                                    LatLng(state.userLatitude, state.userLongitude),
-                                    17f,
-                                ),
-                            )
-                        }
-                    }
-
-                    // Lo que flota sobre el mapa (#60): el mapa corre su zoom, su brújula y el
-                    // logo de Google para que no queden tapados.
-                    val density = LocalDensity.current
-                    var statsHeight by remember { mutableStateOf(0.dp) }
-                    var controlsHeight by remember { mutableStateOf(0.dp) }
-
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        GoogleMap(
-                            modifier = Modifier.fillMaxSize(),
-                            cameraPositionState = cameraPositionState,
-                            properties = MapProperties(isMyLocationEnabled = true),
-                            // El botón propio reemplaza al de Google, que no avisa si el GPS
-                            // está apagado (igual que en el mapa de ganado).
-                            uiSettings = MapUiSettings(myLocationButtonEnabled = false),
-                            contentPadding = PaddingValues(
-                                top = if (state.isTracking) statsHeight else 0.dp,
-                                bottom = controlsHeight,
-                            ),
-                        ) {
-                            state.paddocks.forEach { paddock ->
-                                PaddockOverlay(paddock, onClick = { selectedPaddockId = paddock.id })
-                            }
-                            if (state.routePoints.size >= 2) {
-                                Polyline(
-                                    points = state.routePoints.map {
-                                        LatLng(it.latitude, it.longitude)
-                                    },
-                                    color = Color(0xFF2E7D32),
-                                    width = 8f,
-                                )
-                            }
-                        }
-
-                        if (state.isTracking) {
-                            TrackingStatsOverlay(
-                                elapsedSeconds = state.elapsedSeconds,
-                                distanceMeters = state.distanceMeters,
-                                hasGpsSignal = state.hasGpsSignal,
-                                isPaused = state.isPaused,
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .onHeightChanged(density) { statsHeight = it },
-                            )
-                        }
-
-                        TrackingControls(
-                            isTracking = state.isTracking,
-                            isPaused = state.isPaused,
-                            onStart = viewModel::onStartTracking,
-                            onPause = viewModel::onPauseTracking,
-                            onResume = viewModel::onResumeTracking,
-                            onStop = viewModel::onStopTracking,
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .onHeightChanged(density) { controlsHeight = it }
-                                .padding(16.dp),
-                        )
-
-                        CenterOnMeButton(
-                            isLocating = state.isLocating,
-                            onClick = viewModel::onCenterOnMeClicked,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(12.dp),
-                        )
-                    }
-                },
-            )
-        }
-    }
-}
+// Estadísticas y controles de la inspección en curso, dentro del mapa de la finca (#72).
 
 @Composable
 internal fun TrackingStatsOverlay(
@@ -286,6 +95,7 @@ private fun StatItem(label: String, value: String) {
     }
 }
 
+/** Sin inspección en curso: iniciar o registrar un animal. Durante la inspección: pausar o finalizar. */
 @Composable
 internal fun TrackingControls(
     isTracking: Boolean,
@@ -294,9 +104,8 @@ internal fun TrackingControls(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
+    onRegisterAnimal: () -> Unit,
     modifier: Modifier = Modifier,
-    /** En el mapa unificado (#72), "registrar animal" va junto a "Iniciar inspección". */
-    onRegisterAnimal: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         if (!isTracking) {
@@ -304,13 +113,11 @@ internal fun TrackingControls(
                 Button(onClick = onStart, modifier = Modifier.weight(1f)) {
                     Text("Iniciar Inspección")
                 }
-                if (onRegisterAnimal != null) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    FilledTonalButton(onClick = onRegisterAnimal) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Animal")
-                    }
+                Spacer(modifier = Modifier.width(8.dp))
+                FilledTonalButton(onClick = onRegisterAnimal) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Animal")
                 }
             }
         } else {
