@@ -31,7 +31,7 @@ import com.sge.finca.data.local.entity.TransactionEntity
         ReminderEntity::class,
         PendingDeleteEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -46,7 +46,7 @@ abstract class AppDatabase : RoomDatabase() {
 
 /** Todas las migraciones, en orden. Usar esta lista al construir la base de datos. */
 val ALL_MIGRATIONS: Array<Migration>
-    get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+    get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
 
 /** v1 -> v2: agrega la tabla de animales sin borrar las inspecciones existentes. */
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -232,5 +232,15 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
             "CREATE INDEX IF NOT EXISTS `index_pending_deletes_farmId` " +
                     "ON `pending_deletes` (`farmId`)"
         )
+    }
+}
+
+/**
+ * v7 -> v8 (issue #62): los animales se sincronizan con la finca y necesitan updatedAt para
+ * resolver conflictos. Las filas existentes quedan en 0 (pierden ante cualquier edición remota).
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `animals` ADD COLUMN `updatedAt` INTEGER NOT NULL DEFAULT 0")
     }
 }
