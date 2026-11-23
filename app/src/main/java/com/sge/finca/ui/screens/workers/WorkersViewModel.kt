@@ -3,6 +3,7 @@ package com.sge.finca.ui.screens.workers
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sge.finca.data.repository.WorkersRepository
+import com.sge.finca.domain.model.Permission
 import com.sge.finca.domain.repository.FarmRepository
 import com.sge.finca.domain.repository.SessionRepository
 import android.util.Log
@@ -153,6 +154,25 @@ class WorkersViewModel @Inject constructor(
                 }
             } finally {
                 _uiState.update { it.copy(isRegenerating = false) }
+            }
+        }
+    }
+
+    /** Otorga o quita a un trabajador un permiso de vista, por ejemplo ver el balance (#67). */
+    fun setGrant(workerUid: String, permission: Permission, granted: Boolean) {
+        val farmId = currentFarmId ?: return
+        if (!_uiState.value.isOwner) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(errorMessage = null) }
+            try {
+                workersRepository.setGrant(farmId, workerUid, permission, granted)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = e.message ?: "No se pudo actualizar el permiso")
+                }
             }
         }
     }
