@@ -15,6 +15,7 @@ package com.sge.finca.data.remote
  * farms/{farmId}/inspectionRoutes/{id}
  * farms/{farmId}/inspectionRoutes/{id}/points/{pointId}
  * farms/{farmId}/paddocks/{id}                 potreros (#71); el notifier de alertas (#73) los lee
+ * farms/{farmId}/alerts/{id}                   vacas fuera de los potreros (#73); las crea el notifier
  */
 object FirestorePaths {
     const val USERS = "users"
@@ -29,6 +30,7 @@ object FirestorePaths {
     const val POINTS = "points"
     const val INVITE_CODES = "inviteCodes"
     const val PADDOCKS = "paddocks"
+    const val ALERTS = "alerts"
 
     fun user(uid: String) = "$USERS/${requireId(uid)}"
 
@@ -44,6 +46,7 @@ object FirestorePaths {
     fun inspectionRoute(farmId: String, id: String) =
         "${farm(farmId)}/$INSPECTION_ROUTES/${requireId(id)}"
     fun paddock(farmId: String, id: String) = "${farm(farmId)}/$PADDOCKS/${requireId(id)}"
+    fun alert(farmId: String, id: String) = "${farm(farmId)}/$ALERTS/${requireId(id)}"
     /** Subcolección de una finca, p. ej. farms/{farmId}/transactions. */
     fun farmCollection(farmId: String, collection: String) = "${farm(farmId)}/${requireId(collection)}"
 
