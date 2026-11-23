@@ -20,6 +20,7 @@ escribir; estas reglas son la última línea de defensa si alguien se salta la a
 | `transactions` | miembros | miembros (`createdBy` = su uid, monto entero > 0) | dueño (sin cambiar `createdBy`/`createdAt`) | dueño |
 | `animalRecords`, `contacts`, `reminders`, `inspectionRoutes` (+ `points`) | miembros | miembros | miembros | miembros |
 | `paddocks` (#71) | miembros | miembros (`createdBy` = su uid, mínimo 3 puntos) | dueño (sin cambiar `createdBy`/`createdAt`) | dueño |
+| `alerts` (#73) | miembros | nadie (las crea sge-notifier) | dueño, solo `forwardedAt` y `forwardedBy` = su uid | nadie |
 
 "Miembro" = tiene `farms/{farmId}/members/{uid}` con `isActive` distinto de `false`.
 

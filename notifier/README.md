@@ -35,6 +35,32 @@ Solo expone `/health` en `127.0.0.1:8081` para verificarlo dentro del contenedor
 - **Se recupera solo.** Si se cae el listener (red, índice que falta), reintenta cada 30 s.
 - El mensaje es de **solo datos**: la app arma la notificación con su propio canal y su ícono.
 
+## Alertas de vacas fuera de los potreros (#73)
+
+El mismo servicio vigila los potreros que se guardan desde la app (#71):
+
+```
+collar-api (127.0.0.1:8080) ──posiciones cada 15 s──▶ sge-notifier
+farms/{finca}/paddocks      ──listener──────────────▶   · ¿la vaca está dentro de algún potrero?
+                                                        · fuera en 2 lecturas seguidas
+                                                        ▼
+                     farms/{finca}/alerts/{id} (OPEN) + push al propietario
+                     propietario toca "Reenviar" → forwardedAt → push a los trabajadores activos
+                     la vaca vuelve a un potrero → la alerta pasa a RESOLVED (sin push)
+```
+
+- **Una sola alerta abierta por vaca**: mientras siga fuera no se repite el aviso.
+- **Solo el servidor crea y resuelve alertas** (firebase-admin no pasa por las Security Rules);
+  el propietario solo puede marcar el reenvío.
+- **Necesita la clave de collar-api**: `install.sh` la copia de `/etc/sge-collar-api/env`. Sin
+  `COLLAR_API_KEY` las alertas quedan apagadas y los avisos de transacciones siguen funcionando.
+- **No necesita índices nuevos**: escucha `paddocks` y `alerts` sin filtros.
+- Para la demo, dibuja el potrero cerca del borde del círculo (anclaje + radio) de un collar: la
+  vaca sale y entra sola.
+
+Variables (en `/etc/sge-notifier/env`): `COLLAR_API_URL` (por defecto `http://127.0.0.1:8080`),
+`COLLAR_API_KEY` y `GEOFENCE_INTERVAL_SECONDS` (por defecto 15, mínimo 5).
+
 ## Configuración en Firebase (una sola vez)
 
 ### 1. Cuenta de servicio
@@ -98,7 +124,7 @@ cd ~/SGE && git pull && cd notifier && bash deploy/install.sh  # actualizar
 
 ```bash
 npm install
-npm test                                 # 10 pruebas, sin credenciales (Firebase simulado)
+npm test                                 # sin credenciales (Firebase simulado)
 GOOGLE_APPLICATION_CREDENTIALS=./clave.json NOTIFY_AUTHOR=true npm start
 ```
 
@@ -110,6 +136,11 @@ src/
   config.js                variables de entorno validadas
   transactionNotifier.js   listener de Firestore, deduplicación, envío y limpieza de tokens
   transactionMessage.js    lógica pura: a quién avisar, texto del mensaje, formato COP
+  push.js                  envío FCM compartido, limpieza de tokens y "avisar una sola vez"
+  geofence.js              lógica pura de alertas: punto en polígono, lecturas seguidas, textos
+  paddockWatcher.js        potreros + posiciones de collar-api → alertas y aviso al propietario
+  alertForwarder.js        reenvío de alertas a los trabajadores
+  collarClient.js          cliente de /v1/positions de collar-api
 test/                      pruebas con node:test
 deploy/                    servicio systemd e instalador
 ```

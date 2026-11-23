@@ -24,8 +24,17 @@ export function loadConfig(env = process.env) {
     throw new Error(`HEALTH_PORT inválido: ${env.HEALTH_PORT}`);
   }
 
+  const geofenceIntervalSeconds = Number(env.GEOFENCE_INTERVAL_SECONDS ?? 15);
+  if (!Number.isFinite(geofenceIntervalSeconds) || geofenceIntervalSeconds < 5) {
+    throw new Error(`GEOFENCE_INTERVAL_SECONDS inválido (mínimo 5): ${env.GEOFENCE_INTERVAL_SECONDS}`);
+  }
+
   return {
     credentials,
+    // Alertas de potreros (#73): sin COLLAR_API_KEY quedan apagadas y el resto sigue funcionando.
+    collarApiUrl: env.COLLAR_API_URL ?? 'http://127.0.0.1:8080',
+    collarApiKey: env.COLLAR_API_KEY || null,
+    geofenceIntervalMs: geofenceIntervalSeconds * 1000,
     // Solo para la demo con un celular: también avisa a quien registró la transacción.
     notifyAuthor: env.NOTIFY_AUTHOR === 'true',
     maxAgeMinutes,

@@ -17,6 +17,8 @@ import com.sge.finca.ui.screens.animals.AnimalDetailScreen
 import com.sge.finca.ui.screens.animals.AnimalDetailViewModel
 import com.sge.finca.ui.screens.animals.AnimalListScreen
 import com.sge.finca.ui.screens.animals.AnimalListViewModel
+import com.sge.finca.ui.screens.alerts.AlertDetailScreen
+import com.sge.finca.ui.screens.alerts.AlertDetailViewModel
 import com.sge.finca.ui.screens.animals.AnimalMapViewModel
 import com.sge.finca.ui.screens.animals.RegisterAnimalScreen
 import com.sge.finca.ui.screens.animals.RegisterAnimalViewModel
@@ -162,6 +164,17 @@ fun AppNavigation(
                 onNavigateToDetail = { id ->
                     navController.navigate(Screen.TransactionDetail.createRoute(id))
                 },
+            )
+        }
+        // Alerta de vaca fuera de los potreros (#73): se abre desde la notificación push.
+        composable(
+            route = Screen.AlertDetail.route,
+            arguments = listOf(navArgument("alertId") { type = NavType.StringType }),
+        ) {
+            val alertDetailViewModel: AlertDetailViewModel = hiltViewModel()
+            AlertDetailScreen(
+                viewModel = alertDetailViewModel,
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         // Mapa único (#72): reemplaza a las pestañas de Inspecciones y Ganado.

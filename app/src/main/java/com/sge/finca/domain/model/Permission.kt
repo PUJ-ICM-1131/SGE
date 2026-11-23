@@ -30,6 +30,8 @@ enum class Permission(val ownerOnly: Boolean, val grantable: Boolean = false) {
     MANAGE_WORKERS(ownerOnly = true),
     VIEW_INVITE_CODE(ownerOnly = true),
     CONFIGURE_FARM(ownerOnly = true),
+    /** Reenviar a los trabajadores la alerta de una vaca fuera de los potreros (#73). */
+    FORWARD_ALERTS(ownerOnly = true),
 }
 
 /**
