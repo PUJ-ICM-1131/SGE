@@ -1,6 +1,7 @@
 package com.sge.finca.ui.screens.workers
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,10 +18,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -29,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -37,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sge.finca.data.repository.WorkerSummary
+import com.sge.finca.domain.model.Permission
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -201,7 +206,12 @@ fun WorkersScreen(
                         else -> {
                             LazyColumn {
                                 items(state.workers, key = { it.uid }) { worker ->
-                                    WorkerCard(worker)
+                                    WorkerCard(
+                                        worker = worker,
+                                        onGrantChange = { permission, granted ->
+                                            viewModel.setGrant(worker.uid, permission, granted)
+                                        },
+                                    )
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
                             }
@@ -222,7 +232,7 @@ fun WorkersScreen(
 }
 
 @Composable
-private fun WorkerCard(worker: WorkerSummary) {
+private fun WorkerCard(worker: WorkerSummary, onGrantChange: (Permission, Boolean) -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -246,8 +256,39 @@ private fun WorkerCard(worker: WorkerSummary) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+
+            // Permisos de vista que el propietario otorga (#67); un inactivo no tiene ninguno.
+            if (worker.isActive) {
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider()
+                GRANTABLE.forEach { permission ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = grantLabel(permission),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Switch(
+                            checked = permission in worker.grants,
+                            onCheckedChange = { granted -> onGrantChange(permission, granted) },
+                        )
+                    }
+                }
+            }
         }
     }
+}
+
+private val GRANTABLE = Permission.entries.filter { it.grantable }
+
+private fun grantLabel(permission: Permission): String = when (permission) {
+    Permission.VIEW_BALANCE -> "Ver balance y reportes"
+    else -> permission.name
 }
 
 private fun formatJoinedAt(timestamp: Long): String {
