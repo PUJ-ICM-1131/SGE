@@ -3,9 +3,6 @@ package com.sge.finca.ui.screens.animals
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sge.finca.domain.usecase.ObserveTrackedAnimalsUseCase
-import com.sge.finca.platform.location.CenterOnMeResult
-import com.sge.finca.platform.location.LocationHelper
-import com.sge.finca.ui.components.GpsMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,9 +11,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * Vacas del mapa de la finca (#72): posiciones en vivo y la vaca seleccionada. La ubicación del
+ * usuario y el botón de centrar los maneja InspectionMapViewModel.
+ */
 @HiltViewModel
 class AnimalMapViewModel @Inject constructor(
-    private val locationHelper: LocationHelper,
     private val observeTrackedAnimals: ObserveTrackedAnimalsUseCase,
 ) : ViewModel() {
 
@@ -30,52 +30,6 @@ class AnimalMapViewModel @Inject constructor(
                 _uiState.update { it.copy(animals = animals) }
             }
         }
-    }
-
-    fun onPermissionGranted() {
-        viewModelScope.launch {
-            val loc = locationHelper.requestCurrentLocation()
-            if (loc != null) {
-                _uiState.update {
-                    it.copy(
-                        userLatitude = loc.latitude,
-                        userLongitude = loc.longitude,
-                        hasUserLocation = true,
-                    )
-                }
-            }
-        }
-    }
-
-    /**
-     * Botón "centrar en mi ubicación" (#59). Sin ubicación activada o sin señal, avisa con un
-     * snackbar en vez de no hacer nada; nunca bloquea el mapa.
-     */
-    fun onCenterOnMeClicked() {
-        if (_uiState.value.isLocating) return
-        _uiState.update { it.copy(isLocating = true) }
-        viewModelScope.launch {
-            val result = locationHelper.locateForCentering()
-            _uiState.update {
-                when (result) {
-                    CenterOnMeResult.LocationOff ->
-                        it.copy(isLocating = false, gpsMessage = GpsMessage.LOCATION_OFF)
-                    CenterOnMeResult.NoSignal ->
-                        it.copy(isLocating = false, gpsMessage = GpsMessage.NO_SIGNAL)
-                    is CenterOnMeResult.Located -> it.copy(
-                        isLocating = false,
-                        userLatitude = result.location.latitude,
-                        userLongitude = result.location.longitude,
-                        hasUserLocation = true,
-                        centerRequest = it.centerRequest + 1,
-                    )
-                }
-            }
-        }
-    }
-
-    fun onGpsMessageShown() {
-        _uiState.update { it.copy(gpsMessage = null) }
     }
 
     fun onAnimalSelected(id: String) {
