@@ -214,7 +214,7 @@ fun AppNavigation(
                 onNavigateToReminders = { navController.navigate(Screen.Reminders.route) },
                 onNavigateToReports = { navController.navigate(Screen.Reports.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                showCategories = session.can(Permission.MANAGE_CATEGORIES),
+                showCategories = session.can(Permission.VIEW_TRANSACTIONS),
                 showWorkers = session.can(Permission.MANAGE_WORKERS),
                 showReports = session.can(Permission.VIEW_BALANCE),
                 // Chat (#74): el propietario elige el trabajador; el trabajador va a la suya.
@@ -308,7 +308,7 @@ fun AppNavigation(
         composable(Screen.Categories.route) {
             PermissionGate(
                 session = session,
-                permission = Permission.MANAGE_CATEGORIES,
+                permission = Permission.VIEW_TRANSACTIONS,
                 onNavigateBack = { navController.popBackStack() },
             ) {
                 CategoriesScreen(onNavigateBack = { navController.popBackStack() })
