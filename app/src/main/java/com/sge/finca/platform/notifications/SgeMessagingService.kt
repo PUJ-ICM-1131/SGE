@@ -16,6 +16,8 @@ class SgeMessagingService : FirebaseMessagingService() {
 
     @Inject lateinit var transactionNotifier: TransactionPushNotifier
 
+    @Inject lateinit var alertNotifier: AlertPushNotifier
+
     override fun onNewToken(token: String) {
         tokenRegistrar.onNewToken(token)
     }
@@ -31,11 +33,22 @@ class SgeMessagingService : FirebaseMessagingService() {
                     body = data["body"] ?: "Se registró un movimiento en la finca",
                 )
             }
+            // Vaca fuera de los potreros (#73): al propietario, o reenviada a los trabajadores.
+            TYPE_ANIMAL_OUTSIDE, TYPE_ANIMAL_OUTSIDE_FORWARDED -> {
+                val alertId = data["alertId"] ?: return
+                alertNotifier.show(
+                    alertId = alertId,
+                    title = data["title"] ?: "Una vaca salió de los potreros",
+                    body = data["body"] ?: "Toca para ver dónde está",
+                )
+            }
             // Tipos desconocidos (versiones futuras del servidor) se ignoran.
         }
     }
 
     private companion object {
         const val TYPE_TRANSACTION_CREATED = "transaction_created"
+        const val TYPE_ANIMAL_OUTSIDE = "animal_outside"
+        const val TYPE_ANIMAL_OUTSIDE_FORWARDED = "animal_outside_forwarded"
     }
 }
