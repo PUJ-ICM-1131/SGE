@@ -137,6 +137,8 @@ fun AppNavigation(
         // Bottom nav destinations
         composable(Screen.Home.route) {
             HomeScreen(
+                // El balance lo ve el propietario y el trabajador al que se lo otorgó (#67).
+                showBalance = session.can(Permission.VIEW_BALANCE),
                 onNavigateToNewTransaction = { navController.navigate(Screen.NewTransaction.route) },
                 // Campana: panel de notificaciones (recordatorios). Reportes sigue en "Más".
                 onNavigateToNotifications = { navController.navigate(Screen.Reminders.route) },
@@ -156,6 +158,7 @@ fun AppNavigation(
         }
         composable(Screen.TransactionHistory.route) {
             TransactionHistoryScreen(
+                showSummary = session.can(Permission.VIEW_BALANCE),
                 onNavigateToNew = { navController.navigate(Screen.NewTransaction.route) },
                 onNavigateToDetail = { id ->
                     navController.navigate(Screen.TransactionDetail.createRoute(id))
@@ -200,6 +203,7 @@ fun AppNavigation(
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 showCategories = session.can(Permission.MANAGE_CATEGORIES),
                 showWorkers = session.can(Permission.MANAGE_WORKERS),
+                showReports = session.can(Permission.VIEW_BALANCE),
             )
         }
 
@@ -241,7 +245,13 @@ fun AppNavigation(
 
         // Other screens
         composable(Screen.Reports.route) {
-            ReportsScreen(onNavigateBack = { navController.popBackStack() })
+            PermissionGate(
+                session = session,
+                permission = Permission.VIEW_BALANCE,
+                onNavigateBack = { navController.popBackStack() },
+            ) {
+                ReportsScreen(onNavigateBack = { navController.popBackStack() })
+            }
         }
         composable(Screen.Categories.route) {
             PermissionGate(

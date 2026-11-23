@@ -64,6 +64,8 @@ fun TransactionHistoryScreen(
     viewModel: TransactionHistoryViewModel = hiltViewModel(),
     onNavigateToNew: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
+    // Balance y totales del periodo: ocultos sin VIEW_BALANCE (#67).
+    showSummary: Boolean = true,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showRangePicker by rememberSaveable { mutableStateOf(false) }
@@ -115,6 +117,7 @@ fun TransactionHistoryScreen(
                 onCategorySelected = viewModel::onCategorySelected,
                 onClearFilters = viewModel::onClearFilters,
                 onTransactionClick = onNavigateToDetail,
+                showSummary = showSummary,
             )
         }
     }
@@ -124,6 +127,7 @@ fun TransactionHistoryScreen(
 private fun HistoryContent(
     state: TransactionHistoryUiState,
     contentPadding: PaddingValues,
+    showSummary: Boolean,
     onTypeSelected: (TransactionType?) -> Unit,
     onPeriodSelected: (HistoryPeriod) -> Unit,
     onCategorySelected: (String?) -> Unit,
@@ -150,7 +154,9 @@ private fun HistoryContent(
                 onClearFilters = onClearFilters,
             )
         }
-        item(key = "summary") { SummaryCard(state.filter.periodDescription(), state.summary) }
+        if (showSummary) {
+            item(key = "summary") { SummaryCard(state.filter.periodDescription(), state.summary) }
+        }
 
         if (state.transactions.isEmpty()) {
             item(key = "empty") {

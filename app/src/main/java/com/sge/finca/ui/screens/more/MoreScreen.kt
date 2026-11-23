@@ -37,6 +37,8 @@ fun MoreScreen(
     // Opciones solo para el propietario (issue #28): a un trabajador no se le muestran.
     showCategories: Boolean = true,
     showWorkers: Boolean = true,
+    // Reportes y Balance: solo con VIEW_BALANCE (#67).
+    showReports: Boolean = true,
 ) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Más") }) },
@@ -78,13 +80,15 @@ fun MoreScreen(
                 modifier = Modifier.clickable(onClick = onNavigateToReminders),
             )
             HorizontalDivider()
-            ListItem(
-                headlineContent = { Text("Reportes y Balance") },
-                supportingContent = { Text("Ver balance, gráficos y exportar reportes") },
-                leadingContent = { Icon(Icons.Default.InsertChart, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = onNavigateToReports),
-            )
-            HorizontalDivider()
+            if (showReports) {
+                ListItem(
+                    headlineContent = { Text("Reportes y Balance") },
+                    supportingContent = { Text("Ver balance, gráficos y exportar reportes") },
+                    leadingContent = { Icon(Icons.Default.InsertChart, contentDescription = null) },
+                    modifier = Modifier.clickable(onClick = onNavigateToReports),
+                )
+                HorizontalDivider()
+            }
             ListItem(
                 headlineContent = { Text("Configuración") },
                 supportingContent = { Text("Perfil y preferencias") },

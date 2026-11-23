@@ -8,6 +8,10 @@ rules_version = '2';
 //
 // Rol = farms/{farmId}/members/{uid}.role ("OWNER" | "WORKER"). El campo users/{uid}.role
 // es solo informativo y NUNCA se usa para dar permisos.
+//
+// members/{uid}.grants (#67) = permisos de vista que el propietario otorgó a un trabajador
+// (p. ej. VIEW_BALANCE). Hoy se aplican en la app; aquí solo se garantiza que nadie más que
+// el dueño los escriba.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -90,7 +94,8 @@ service cloud.firestore {
         // 1) Al crear la finca: el creador se registra a sí mismo como OWNER. Se usa getAfter
         //    porque la finca se crea en el mismo batch (FarmRepositoryImpl.createFarm).
         // 2) Unirse con código de invitación (#29): el usuario se registra a sí mismo como
-        //    WORKER activo, presentando el código vigente de la finca.
+        //    WORKER activo, presentando el código vigente de la finca y sin permisos
+        //    otorgados (#67).
         // 3) El dueño agrega miembros.
         allow create: if isAuth() && (
             (memberId == request.auth.uid
@@ -100,19 +105,21 @@ service cloud.firestore {
           || (memberId == request.auth.uid
               && request.resource.data.role == 'WORKER'
               && request.resource.data.get('isActive', true) == true
+              && !request.resource.data.keys().hasAny(['grants'])
               && request.resource.data.inviteCode
                    == get(/databases/$(database)/documents/farms/$(farmId)).data.inviteCode)
           || isOwner(farmId)
         );
 
-        // El dueño gestiona a los demás (rol, dar de baja), pero no se quita a sí mismo el
-        // rol de dueño. Un miembro puede editar sus propios datos, nunca su rol ni isActive.
+        // El dueño gestiona a los demás (rol, dar de baja, otorgar permisos), pero no se quita
+        // a sí mismo el rol de dueño. Un miembro puede editar sus propios datos, nunca su rol,
+        // isActive ni sus permisos otorgados.
         allow update: if
             (isOwner(farmId)
               && (memberId != request.auth.uid || request.resource.data.role == 'OWNER'))
           || (isMember(farmId)
               && memberId == request.auth.uid
-              && !changes().hasAny(['role', 'isActive']));
+              && !changes().hasAny(['role', 'isActive', 'grants']));
 
         // El dueño saca a un trabajador; un trabajador puede salirse; el dueño no se borra.
         allow delete: if

@@ -46,10 +46,10 @@ fun PermissionGate(
         }
         session.can(permission) -> content()
         else -> AccessDenied(
-            message = if (permission.ownerOnly && session.role != null) {
-                "Esta sección es solo para el propietario de la finca."
-            } else {
-                "No tienes acceso a esta sección."
+            message = when {
+                !permission.ownerOnly || session.role == null -> "No tienes acceso a esta sección."
+                permission.grantable -> "El propietario aún no te ha dado acceso a esta sección."
+                else -> "Esta sección es solo para el propietario de la finca."
             },
             onNavigateBack = onNavigateBack,
         )

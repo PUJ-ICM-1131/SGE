@@ -6,6 +6,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.sge.finca.domain.model.FarmMember
 import com.sge.finca.domain.model.FarmRole
+import com.sge.finca.domain.model.Permission
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,8 @@ import kotlinx.coroutines.flow.retryWhen
  *   joinedAt     Long (ms)
  *   displayName  String
  *   email        String
+ *   grants       List<String> permisos que otorgó el propietario (#67). Solo lo escribe el
+ *                propietario (WorkersRepository.setGrant); si falta, no hay ninguno.
  */
 
 fun FarmMember.toFirestore(): Map<String, Any?> = mapOf(
@@ -44,8 +47,15 @@ fun DocumentSnapshot.toFarmMember(farmId: String): FarmMember? {
         // "name" era el campo que usaba el #23; se lee como respaldo.
         displayName = getString("displayName") ?: getString("name") ?: "",
         email = getString("email") ?: "",
+        grants = toGrants(),
     )
 }
+
+/** Permisos otorgados de la membresía; ignora los desconocidos y los que no se pueden otorgar. */
+fun DocumentSnapshot.toGrants(): Set<Permission> =
+    (get("grants") as? List<*>).orEmpty()
+        .mapNotNull { raw -> Permission.entries.firstOrNull { it.grantable && it.name == raw } }
+        .toSet()
 
 /**
  * Escucha la membresía de [uid] en [farmId]. Responde desde la caché offline de Firestore si no

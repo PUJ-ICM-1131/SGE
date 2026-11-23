@@ -64,6 +64,8 @@ fun HomeScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToTransaction: (String) -> Unit,
     onNavigateToJoinFarm: () -> Unit,
+    // Balance e ingresos/egresos del mes: ocultos sin VIEW_BALANCE (#67).
+    showBalance: Boolean = true,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -161,7 +163,9 @@ fun HomeScreen(
                     }
                 }
 
-                item(key = "balance") { MonthSummary(state) }
+                if (showBalance) {
+                    item(key = "balance") { MonthSummary(state) }
+                }
 
                 item(key = "recent-header") {
                     Row(
