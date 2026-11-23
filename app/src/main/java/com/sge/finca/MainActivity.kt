@@ -53,6 +53,9 @@ class MainActivity : FragmentActivity() {
             NotificationDestinations.TRANSACTION ->
                 intent.getStringExtra(NotificationDestinations.EXTRA_TRANSACTION_ID)
                     ?.let(Screen.TransactionDetail::createRoute)
+            NotificationDestinations.ALERT ->
+                intent.getStringExtra(NotificationDestinations.EXTRA_ALERT_ID)
+                    ?.let(Screen.AlertDetail::createRoute)
             else -> null
         }
 }
