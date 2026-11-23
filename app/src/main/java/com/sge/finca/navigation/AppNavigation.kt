@@ -17,7 +17,6 @@ import com.sge.finca.ui.screens.animals.AnimalDetailScreen
 import com.sge.finca.ui.screens.animals.AnimalDetailViewModel
 import com.sge.finca.ui.screens.animals.AnimalListScreen
 import com.sge.finca.ui.screens.animals.AnimalListViewModel
-import com.sge.finca.ui.screens.animals.AnimalMapScreen
 import com.sge.finca.ui.screens.animals.AnimalMapViewModel
 import com.sge.finca.ui.screens.animals.RegisterAnimalScreen
 import com.sge.finca.ui.screens.animals.RegisterAnimalViewModel
@@ -34,8 +33,8 @@ import com.sge.finca.ui.screens.inspections.InspectionDetailScreen
 import com.sge.finca.ui.screens.inspections.InspectionDetailViewModel
 import com.sge.finca.ui.screens.inspections.InspectionHistoryScreen
 import com.sge.finca.ui.screens.inspections.InspectionHistoryViewModel
-import com.sge.finca.ui.screens.inspections.InspectionMapScreen
 import com.sge.finca.ui.screens.inspections.InspectionMapViewModel
+import com.sge.finca.ui.screens.map.FarmMapScreen
 import com.sge.finca.ui.screens.more.MoreScreen
 import com.sge.finca.ui.screens.more.MoreViewModel
 import com.sge.finca.ui.screens.routes.RouteMapScreen
@@ -165,20 +164,17 @@ fun AppNavigation(
                 },
             )
         }
-        composable(Screen.InspectionMap.route) {
+        // Mapa único (#72): reemplaza a las pestañas de Inspecciones y Ganado.
+        composable(Screen.FarmMap.route) {
             val inspectionViewModel: InspectionMapViewModel = hiltViewModel()
-            InspectionMapScreen(
-                viewModel = inspectionViewModel,
-                onNavigateToHistory = { navController.navigate(Screen.InspectionHistory.route) },
-                onNavigateToRouteMap = { navController.navigate(Screen.RouteMap.route) },
-            )
-        }
-        composable(Screen.AnimalMap.route) {
             val animalMapViewModel: AnimalMapViewModel = hiltViewModel()
-            AnimalMapScreen(
-                viewModel = animalMapViewModel,
-                onNavigateToRegister = { navController.navigate(Screen.RegisterAnimal.route) },
-                onNavigateToList = { navController.navigate(Screen.AnimalList.route) },
+            FarmMapScreen(
+                inspectionViewModel = inspectionViewModel,
+                animalViewModel = animalMapViewModel,
+                onNavigateToInspectionHistory = { navController.navigate(Screen.InspectionHistory.route) },
+                onNavigateToRouteMap = { navController.navigate(Screen.RouteMap.route) },
+                onNavigateToRegisterAnimal = { navController.navigate(Screen.RegisterAnimal.route) },
+                onNavigateToAnimalList = { navController.navigate(Screen.AnimalList.route) },
             )
         }
         composable(Screen.More.route) {
