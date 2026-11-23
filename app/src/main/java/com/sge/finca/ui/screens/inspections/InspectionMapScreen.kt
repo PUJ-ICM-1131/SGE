@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -220,7 +222,7 @@ fun InspectionMapScreen(
 }
 
 @Composable
-private fun TrackingStatsOverlay(
+internal fun TrackingStatsOverlay(
     elapsedSeconds: Long,
     distanceMeters: Double,
     hasGpsSignal: Boolean,
@@ -285,7 +287,7 @@ private fun StatItem(label: String, value: String) {
 }
 
 @Composable
-private fun TrackingControls(
+internal fun TrackingControls(
     isTracking: Boolean,
     isPaused: Boolean,
     onStart: () -> Unit,
@@ -293,11 +295,23 @@ private fun TrackingControls(
     onResume: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
+    /** En el mapa unificado (#72), "registrar animal" va junto a "Iniciar inspección". */
+    onRegisterAnimal: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         if (!isTracking) {
-            Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-                Text("Iniciar Inspección")
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = onStart, modifier = Modifier.weight(1f)) {
+                    Text("Iniciar Inspección")
+                }
+                if (onRegisterAnimal != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FilledTonalButton(onClick = onRegisterAnimal) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Animal")
+                    }
+                }
             }
         } else {
             Row(modifier = Modifier.fillMaxWidth()) {
