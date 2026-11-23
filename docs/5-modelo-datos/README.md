@@ -168,6 +168,8 @@ farms/{farmId}/inspectionRoutes/{id}
 farms/{farmId}/inspectionRoutes/{id}/points/{pointId}
 farms/{farmId}/paddocks/{id}                  name, points [{lat, lng}], areaM2, createdBy, createdAt, updatedAt
 farms/{farmId}/alerts/{id}                    animalId, animalName, lat, lng, status (OPEN | RESOLVED), createdAt, forwardedAt, forwardedBy, resolvedAt
+farms/{farmId}/chats/{workerUid}              lastMessage, lastMessageAt, lastSenderUid
+farms/{farmId}/chats/{workerUid}/messages/{id} senderUid, text, createdAt
 ```
 
 - Todo lo de la finca cuelga de `farms/{farmId}`: así las Security Rules (issue #28) se escriben
@@ -282,6 +284,17 @@ try {
   notificación (pantalla `AlertDetail`).
 - Reenviar: el propietario (`FORWARD_ALERTS`) escribe `forwardedAt`/`forwardedBy`; el notifier
   avisa a los trabajadores activos. Las Security Rules no permiten otro cambio desde la app.
+
+## Chat propietario ↔ trabajador (issue #74)
+
+- Una conversación por trabajador; su id es el uid del trabajador. Los trabajadores no conversan
+  entre sí.
+- La app escribe el mensaje y el resumen de la conversación en un mismo batch
+  (`FirestoreChatRepository`). No usa Room: los listeners y la caché offline de Firestore bastan.
+- El propietario entra desde Más → Mensajes o desde Trabajadores; el trabajador, desde Más.
+- sge-notifier avisa por push al otro participante (`notifier/README.md`).
+- Security Rules: solo el dueño y ese trabajador activo; `senderUid` = quien escribe; texto de 1
+  a 1000 caracteres; los mensajes no se editan ni se borran.
 
 ## Sincronización offline (issue #32)
 
