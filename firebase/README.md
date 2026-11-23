@@ -15,7 +15,7 @@ escribir; estas reglas son la última línea de defensa si alguien se salta la a
 |---|---|---|---|---|
 | `users/{uid}` | el mismo usuario | el mismo usuario | el mismo usuario | el mismo usuario |
 | `farms/{farmId}` | miembros | quien queda como `ownerUid` | dueño (sin cambiar `ownerUid`) | nadie |
-| `members/{uid}` | miembros | dueño · el creador de la finca como OWNER · un usuario como WORKER con el código de invitación | dueño (no se quita su propio rol) · el propio miembro sin tocar `role` ni `isActive` | dueño (a otros) · el propio trabajador |
+| `members/{uid}` | miembros | dueño · el creador de la finca como OWNER · un usuario como WORKER con el código de invitación (sin `grants`) | dueño (no se quita su propio rol; otorga `grants`, #67) · el propio miembro sin tocar `role`, `isActive` ni `grants` | dueño (a otros) · el propio trabajador |
 | `categories` | miembros | dueño | dueño | dueño |
 | `transactions` | miembros | miembros (`createdBy` = su uid, monto entero > 0) | dueño (sin cambiar `createdBy`/`createdAt`) | dueño |
 | `animalRecords`, `contacts`, `reminders`, `inspectionRoutes` (+ `points`) | miembros | miembros | miembros | miembros |
