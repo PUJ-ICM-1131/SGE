@@ -19,6 +19,7 @@ escribir; estas reglas son la última línea de defensa si alguien se salta la a
 | `categories` | miembros | dueño | dueño | dueño |
 | `transactions` | miembros | miembros (`createdBy` = su uid, monto entero > 0) | dueño (sin cambiar `createdBy`/`createdAt`) | dueño |
 | `animalRecords`, `contacts`, `reminders`, `inspectionRoutes` (+ `points`) | miembros | miembros | miembros | miembros |
+| `paddocks` (#71) | miembros | miembros (`createdBy` = su uid, mínimo 3 puntos) | dueño (sin cambiar `createdBy`/`createdAt`) | dueño |
 
 "Miembro" = tiene `farms/{farmId}/members/{uid}` con `isActive` distinto de `false`.
 
