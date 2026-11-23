@@ -148,6 +148,7 @@ Todas en `data/local/AppDatabase.kt` (lista `ALL_MIGRATIONS`). **Nunca** usar
 | 5 → 6 | Tablas `transactions`, `farm_contacts`, `reminders`; `syncStatus` en las tablas existentes; `animals.farmId` y `animals.remotePhotoUrl` |
 | 6 → 7 | Tabla `pending_deletes` (borrados por enviar a Firestore) |
 | 7 → 8 | `animals.updatedAt` (los animales se sincronizan con la finca, #62) |
+| 8 → 9 | Tabla `paddocks`: potreros de la finca (#71) |
 
 `MigrationInstrumentedTest` crea una base v5 a mano y verifica que la migración conserve los datos y
 que Room acepte el esquema resultante.
@@ -165,6 +166,7 @@ farms/{farmId}/contacts/{id}
 farms/{farmId}/reminders/{id}
 farms/{farmId}/inspectionRoutes/{id}
 farms/{farmId}/inspectionRoutes/{id}/points/{pointId}
+farms/{farmId}/paddocks/{id}                  name, points [{lat, lng}], areaM2, createdBy, createdAt, updatedAt
 ```
 
 - Todo lo de la finca cuelga de `farms/{farmId}`: así las Security Rules (issue #28) se escriben
@@ -257,9 +259,22 @@ try {
 }
 ```
 
+## Potreros (issue #71)
+
+- Al finalizar una inspección, si el recorrido termina a 20 m o menos de donde empezó y encierra al
+  menos 100 m², la app ofrece guardarlo como potrero (`PaddockGeometry.isClosedArea`).
+- `PaddockGeometry` (dominio, Kotlin puro): área geodésica en m², `contains` (punto dentro del
+  polígono) y distancia, con pruebas en `PaddockGeometryTest`.
+- Room: tabla `paddocks` (BD v9); los vértices se guardan como texto `lat,lng;lat,lng`.
+- Firestore: `points` es una lista `[{lat, lng}]` en orden, sin repetir el primer punto. El
+  notifier de alertas (#73) lee ese formato: no cambiarlo sin avisar.
+- Permisos: crea cualquier miembro (`START_INSPECTION`); renombrar y eliminar, solo el propietario
+  (`CONFIGURE_FARM`).
+
 ## Sincronización offline (issue #32)
 
-Código en `data/sync/`. Sincroniza **transacciones, categorías, contactos y recordatorios**.
+Código en `data/sync/`. Sincroniza **transacciones, categorías, contactos, recordatorios, animales
+(#62) y potreros (#71)**.
 
 ```mermaid
 flowchart LR
