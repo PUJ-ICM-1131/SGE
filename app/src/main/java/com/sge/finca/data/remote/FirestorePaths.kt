@@ -16,6 +16,8 @@ package com.sge.finca.data.remote
  * farms/{farmId}/inspectionRoutes/{id}/points/{pointId}
  * farms/{farmId}/paddocks/{id}                 potreros (#71); el notifier de alertas (#73) los lee
  * farms/{farmId}/alerts/{id}                   vacas fuera de los potreros (#73); las crea el notifier
+ * farms/{farmId}/chats/{workerUid}             chat propietario ↔ trabajador (#74)
+ * farms/{farmId}/chats/{workerUid}/messages/{id}
  */
 object FirestorePaths {
     const val USERS = "users"
@@ -31,6 +33,8 @@ object FirestorePaths {
     const val INVITE_CODES = "inviteCodes"
     const val PADDOCKS = "paddocks"
     const val ALERTS = "alerts"
+    const val CHATS = "chats"
+    const val MESSAGES = "messages"
 
     fun user(uid: String) = "$USERS/${requireId(uid)}"
 
@@ -47,6 +51,8 @@ object FirestorePaths {
         "${farm(farmId)}/$INSPECTION_ROUTES/${requireId(id)}"
     fun paddock(farmId: String, id: String) = "${farm(farmId)}/$PADDOCKS/${requireId(id)}"
     fun alert(farmId: String, id: String) = "${farm(farmId)}/$ALERTS/${requireId(id)}"
+    fun chat(farmId: String, workerUid: String) = "${farm(farmId)}/$CHATS/${requireId(workerUid)}"
+    fun chatMessages(farmId: String, workerUid: String) = "${chat(farmId, workerUid)}/$MESSAGES"
     /** Subcolección de una finca, p. ej. farms/{farmId}/transactions. */
     fun farmCollection(farmId: String, collection: String) = "${farm(farmId)}/${requireId(collection)}"
 
