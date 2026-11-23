@@ -93,6 +93,8 @@ object NotificationDestinations {
     const val EXTRA_DESTINATION = "com.sge.finca.extra.DESTINATION"
     const val EXTRA_REMINDER_ID = "com.sge.finca.extra.REMINDER_ID"
     const val EXTRA_TRANSACTION_ID = "com.sge.finca.extra.TRANSACTION_ID"
+    const val EXTRA_ALERT_ID = "com.sge.finca.extra.ALERT_ID"
     const val REMINDERS = "reminders"
     const val TRANSACTION = "transaction"
+    const val ALERT = "alert"
 }
