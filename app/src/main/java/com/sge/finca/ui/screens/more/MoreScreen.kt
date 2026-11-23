@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Contacts
@@ -39,6 +40,10 @@ fun MoreScreen(
     showWorkers: Boolean = true,
     // Reportes y Balance: solo con VIEW_BALANCE (#67).
     showReports: Boolean = true,
+    // Chat (#74): el propietario ve sus conversaciones; el trabajador, la suya con el propietario.
+    onNavigateToMessages: () -> Unit = {},
+    messagesSubtitle: String = "Chat con el propietario",
+    showMessages: Boolean = true,
 ) {
     Scaffold(
         topBar = { TopAppBar(title = { Text("Más") }) },
@@ -63,6 +68,15 @@ fun MoreScreen(
                     supportingContent = { Text("Invitar y gestionar trabajadores de la finca") },
                     leadingContent = { Icon(Icons.Default.Group, contentDescription = null) },
                     modifier = Modifier.clickable(onClick = onNavigateToWorkers),
+                )
+                HorizontalDivider()
+            }
+            if (showMessages) {
+                ListItem(
+                    headlineContent = { Text("Mensajes") },
+                    supportingContent = { Text(messagesSubtitle) },
+                    leadingContent = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null) },
+                    modifier = Modifier.clickable(onClick = onNavigateToMessages),
                 )
                 HorizontalDivider()
             }
