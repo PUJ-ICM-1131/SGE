@@ -8,6 +8,7 @@ import com.sge.finca.data.local.dao.AnimalDao
 import com.sge.finca.data.local.dao.CategoryDao
 import com.sge.finca.data.local.dao.FarmContactDao
 import com.sge.finca.data.local.dao.InspectionDao
+import com.sge.finca.data.local.dao.PaddockDao
 import com.sge.finca.data.local.dao.PendingDeleteDao
 import com.sge.finca.data.local.dao.ReminderDao
 import com.sge.finca.data.local.dao.TransactionDao
@@ -50,4 +51,7 @@ object DatabaseModule {
 
     @Provides
     fun providePendingDeleteDao(db: AppDatabase): PendingDeleteDao = db.pendingDeleteDao()
+
+    @Provides
+    fun providePaddockDao(db: AppDatabase): PaddockDao = db.paddockDao()
 }
