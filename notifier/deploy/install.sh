@@ -70,6 +70,26 @@ EOF
   chmod 644 "$ENV_FILE"
 fi
 
+# 4b. Alertas de vacas fuera de los potreros (#73): leen las posiciones de collar-api en este
+#     mismo LXC con su clave. Se agregan aunque el archivo ya exista (instalaciones anteriores).
+COLLAR_ENV=/etc/sge-collar-api/env
+if ! grep -qE '^COLLAR_API_KEY=' "$ENV_FILE"; then
+  KEY=$(grep -E '^COLLAR_API_KEY=' "$COLLAR_ENV" 2>/dev/null | cut -d= -f2- || true)
+  if [[ -n "$KEY" ]]; then
+    echo "==> Activando las alertas de potreros con la clave de collar-api"
+    cat >>"$ENV_FILE" <<EOF
+# Alertas de vacas fuera de los potreros (#73)
+COLLAR_API_URL=http://127.0.0.1:8080
+COLLAR_API_KEY=$KEY
+GEOFENCE_INTERVAL_SECONDS=15
+EOF
+  else
+    echo "AVISO: no encontré COLLAR_API_KEY en $COLLAR_ENV; las alertas de potreros quedan apagadas." >&2
+  fi
+fi
+# Ahora guarda una clave: solo root lo lee (systemd lo carga antes de bajar privilegios).
+chmod 600 "$ENV_FILE"
+
 # 5. Servicio systemd
 echo "==> Instalando el servicio $SERVICE"
 install -m 644 "$REPO_DIR/deploy/$SERVICE.service" "/etc/systemd/system/$SERVICE.service"
