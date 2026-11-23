@@ -14,6 +14,8 @@ sealed class Screen(val route: String) {
     data object TransactionHistory : Screen("transaction_history")
     data object InspectionMap : Screen("inspection_map")
     data object AnimalMap : Screen("animal_map")
+    /** Mapa único (#72): vacas, potreros e inspección. */
+    data object FarmMap : Screen("farm_map")
     data object More : Screen("more")
 
     // Transactions
