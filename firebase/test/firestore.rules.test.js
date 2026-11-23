@@ -292,6 +292,44 @@ test('solo el dueño reenvía, a su nombre, y sin tocar el resto de la alerta (#
   await assertSucceeds(updateDoc(ref(OWNER), { forwardedAt: 20, forwardedBy: OWNER }));
 });
 
+// ---------- Chat propietario ↔ trabajador (#74) ----------
+
+const chatPath = (worker) => `farms/${FARM}/chats/${worker}`;
+const chatMessage = (sender, text = 'Hola') => ({ senderUid: sender, text, createdAt: 10 });
+const chatThread = (sender) => ({ lastMessage: 'Hola', lastMessageAt: 10, lastSenderUid: sender });
+
+test('el dueño y el trabajador conversan en el chat del trabajador (#74)', async () => {
+  await assertSucceeds(setDoc(doc(db(OWNER), `${chatPath(WORKER)}/messages/m1`), chatMessage(OWNER)));
+  await assertSucceeds(setDoc(doc(db(OWNER), chatPath(WORKER)), chatThread(OWNER)));
+  await assertSucceeds(setDoc(doc(db(WORKER), `${chatPath(WORKER)}/messages/m2`), chatMessage(WORKER)));
+  await assertSucceeds(setDoc(doc(db(WORKER), chatPath(WORKER)), chatThread(WORKER)));
+  await assertSucceeds(getDoc(doc(db(WORKER), `${chatPath(WORKER)}/messages/m1`)));
+  await assertSucceeds(getDocs(collection(db(OWNER), `farms/${FARM}/chats`)));
+});
+
+test('nadie más lee ni escribe un chat ajeno, ni a nombre de otro (#74)', async () => {
+  const OTHER = 'uid-worker-2';
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), `farms/${FARM}/members/${OTHER}`), { role: 'WORKER', isActive: true, joinedAt: 4 });
+    await setDoc(doc(ctx.firestore(), `${chatPath(WORKER)}/messages/m1`), chatMessage(OWNER));
+  });
+  await assertFails(getDoc(doc(db(OTHER), `${chatPath(WORKER)}/messages/m1`)));
+  await assertFails(setDoc(doc(db(OTHER), `${chatPath(WORKER)}/messages/m2`), chatMessage(OTHER)));
+  await assertFails(getDocs(collection(db(WORKER), `farms/${FARM}/chats`)));
+  await assertFails(setDoc(doc(db(WORKER), `${chatPath(WORKER)}/messages/m3`), chatMessage(OWNER)));
+  await assertFails(getDoc(doc(db(STRANGER), `${chatPath(WORKER)}/messages/m1`)));
+  await assertFails(getDoc(doc(db(INACTIVE), chatPath(INACTIVE))));
+});
+
+test('los mensajes no van vacíos ni muy largos y no se editan ni se borran (#74)', async () => {
+  const ref = (id) => doc(db(WORKER), `${chatPath(WORKER)}/messages/${id}`);
+  await assertFails(setDoc(ref('vacio'), chatMessage(WORKER, '')));
+  await assertFails(setDoc(ref('largo'), chatMessage(WORKER, 'x'.repeat(1001))));
+  await assertSucceeds(setDoc(ref('ok'), chatMessage(WORKER)));
+  await assertFails(updateDoc(ref('ok'), { text: 'editado' }));
+  await assertFails(deleteDoc(ref('ok')));
+});
+
 // ---------- Datos operativos y perfiles ----------
 
 test('el trabajador registra animales, inspecciones, contactos y recordatorios', async () => {
