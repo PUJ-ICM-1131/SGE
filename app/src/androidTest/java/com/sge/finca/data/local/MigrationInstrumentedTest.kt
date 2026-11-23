@@ -73,6 +73,8 @@ class MigrationInstrumentedTest {
             assertEquals(0, db.reminderDao().observeByFarm("finca-1").first().size)
             // v7 (#32): tabla de borrados pendientes.
             assertEquals(0, db.pendingDeleteDao().getRetryable().size)
+            // v9 (#71): potreros.
+            assertEquals(0, db.paddockDao().observeByFarm("finca-1").first().size)
         } finally {
             db.close()
         }
