@@ -127,7 +127,14 @@ internal fun TrackingControls(
                         Text("Reanudar")
                     }
                 } else {
-                    OutlinedButton(onClick = onPause, modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = onPause,
+                        modifier = Modifier.weight(1f),
+                        // Sin fondo, el texto se pierde sobre el mapa (#78).
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                        ),
+                    ) {
                         Text("Pausar")
                     }
                 }
