@@ -193,6 +193,17 @@ service cloud.firestore {
           && request.resource.data.points.size() >= 3;
         allow delete: if isOwner(farmId);
       }
+
+      // ---------- Alertas de vacas fuera de los potreros (#73) ----------
+      // Las crea y resuelve sge-notifier con firebase-admin, que no pasa por estas reglas.
+      // El dueño solo marca el reenvío a los trabajadores, a su nombre.
+      match /alerts/{alertId} {
+        allow read: if isMember(farmId);
+        allow create, delete: if false;
+        allow update: if isOwner(farmId)
+          && changes().hasOnly(['forwardedAt', 'forwardedBy'])
+          && request.resource.data.forwardedBy == request.auth.uid;
+      }
     }
 
     // Cualquier otra ruta queda cerrada (Firestore niega por defecto).
