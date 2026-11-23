@@ -8,6 +8,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.sge.finca.data.sync.FarmSyncListener
 import com.sge.finca.data.sync.SyncScheduler
+import com.sge.finca.platform.notifications.AlertPushNotifier
 import com.sge.finca.platform.notifications.PushTokenRegistrar
 import com.sge.finca.platform.notifications.ReminderNotifier
 import com.sge.finca.platform.notifications.TransactionPushNotifier
@@ -29,6 +30,9 @@ class FincaApplication : Application(), Configuration.Provider {
     lateinit var transactionPushNotifier: TransactionPushNotifier
 
     @Inject
+    lateinit var alertPushNotifier: AlertPushNotifier
+
+    @Inject
     lateinit var pushTokenRegistrar: PushTokenRegistrar
 
     @Inject
@@ -47,6 +51,7 @@ class FincaApplication : Application(), Configuration.Provider {
         // El canal debe existir antes de mostrar la primera notificación (Android 8+).
         reminderNotifier.createChannel()
         transactionPushNotifier.createChannel()
+        alertPushNotifier.createChannel()
         // Guarda el token FCM de este celular cada vez que hay sesión (para los avisos push).
         pushTokenRegistrar.start()
         schedulePhotoCleanup()
