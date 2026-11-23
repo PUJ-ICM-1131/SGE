@@ -131,7 +131,6 @@ fun FarmMapScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Mapa") },
@@ -279,6 +278,14 @@ fun FarmMapScreen(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(12.dp),
+                        )
+
+                        // Los avisos salen encima del panel inferior, nunca sobre él (#77).
+                        SnackbarHost(
+                            hostState = snackbarHostState,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = bottomHeight),
                         )
                     }
                 },
