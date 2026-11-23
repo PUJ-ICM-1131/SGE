@@ -18,6 +18,8 @@ class SgeMessagingService : FirebaseMessagingService() {
 
     @Inject lateinit var alertNotifier: AlertPushNotifier
 
+    @Inject lateinit var chatNotifier: ChatPushNotifier
+
     override fun onNewToken(token: String) {
         tokenRegistrar.onNewToken(token)
     }
@@ -42,6 +44,15 @@ class SgeMessagingService : FirebaseMessagingService() {
                     body = data["body"] ?: "Toca para ver dónde está",
                 )
             }
+            // Mensaje del chat propietario ↔ trabajador (#74).
+            TYPE_CHAT_MESSAGE -> {
+                val workerUid = data["workerUid"] ?: return
+                chatNotifier.show(
+                    workerUid = workerUid,
+                    title = data["title"] ?: "Mensaje nuevo",
+                    body = data["body"] ?: "",
+                )
+            }
             // Tipos desconocidos (versiones futuras del servidor) se ignoran.
         }
     }
@@ -50,5 +61,6 @@ class SgeMessagingService : FirebaseMessagingService() {
         const val TYPE_TRANSACTION_CREATED = "transaction_created"
         const val TYPE_ANIMAL_OUTSIDE = "animal_outside"
         const val TYPE_ANIMAL_OUTSIDE_FORWARDED = "animal_outside_forwarded"
+        const val TYPE_CHAT_MESSAGE = "chat_message"
     }
 }
