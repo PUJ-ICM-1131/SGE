@@ -265,6 +265,33 @@ test('solo el dueño renombra o elimina potreros (#71)', async () => {
   await assertSucceeds(deleteDoc(doc(db(OWNER), `farms/${FARM}/paddocks/p1`)));
 });
 
+// ---------- Alertas de vacas fuera de los potreros (#73) ----------
+
+async function seedAlert() {
+  await env.withSecurityRulesDisabled((ctx) =>
+    setDoc(doc(ctx.firestore(), `farms/${FARM}/alerts/a1`), {
+      animalId: 'lola', animalName: 'Lola', lat: 4.6, lng: -74.1, status: 'OPEN', createdAt: 10,
+      forwardedAt: null, forwardedBy: null, resolvedAt: null,
+    }));
+}
+
+test('los miembros leen las alertas; nadie las crea ni las borra desde la app (#73)', async () => {
+  await seedAlert();
+  await assertSucceeds(getDoc(doc(db(WORKER), `farms/${FARM}/alerts/a1`)));
+  await assertFails(getDoc(doc(db(STRANGER), `farms/${FARM}/alerts/a1`)));
+  await assertFails(setDoc(doc(db(OWNER), `farms/${FARM}/alerts/a2`), { animalId: 'x', status: 'OPEN' }));
+  await assertFails(deleteDoc(doc(db(OWNER), `farms/${FARM}/alerts/a1`)));
+});
+
+test('solo el dueño reenvía, a su nombre, y sin tocar el resto de la alerta (#73)', async () => {
+  await seedAlert();
+  const ref = (uid) => doc(db(uid), `farms/${FARM}/alerts/a1`);
+  await assertFails(updateDoc(ref(WORKER), { forwardedAt: 20, forwardedBy: WORKER }));
+  await assertFails(updateDoc(ref(OWNER), { forwardedAt: 20, forwardedBy: WORKER }));
+  await assertFails(updateDoc(ref(OWNER), { status: 'RESOLVED' }));
+  await assertSucceeds(updateDoc(ref(OWNER), { forwardedAt: 20, forwardedBy: OWNER }));
+});
+
 // ---------- Datos operativos y perfiles ----------
 
 test('el trabajador registra animales, inspecciones, contactos y recordatorios', async () => {
