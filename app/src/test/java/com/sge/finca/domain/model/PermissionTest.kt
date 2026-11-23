@@ -30,6 +30,7 @@ class PermissionTest {
         Permission.START_INSPECTION,
         Permission.MANAGE_CONTACTS,
         Permission.MANAGE_REMINDERS,
+        Permission.CHAT,
     )
 
     private fun worker(grants: Set<Permission> = emptySet(), isActive: Boolean = true) = Session(

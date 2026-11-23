@@ -204,6 +204,33 @@ service cloud.firestore {
           && changes().hasOnly(['forwardedAt', 'forwardedBy'])
           && request.resource.data.forwardedBy == request.auth.uid;
       }
+
+      // ---------- Chat propietario ↔ trabajador (#74) ----------
+      // Una conversación por trabajador (el id es su uid): solo la leen y escriben el dueño y
+      // ese trabajador mientras esté activo. Los mensajes no se editan ni se borran.
+      match /chats/{workerUid} {
+        function participant() {
+          return isOwner(farmId) || (isMember(farmId) && request.auth.uid == workerUid);
+        }
+
+        allow read: if participant();
+        allow create, update: if participant()
+          && request.resource.data.keys().hasOnly(['lastMessage', 'lastMessageAt', 'lastSenderUid'])
+          && request.resource.data.lastSenderUid == request.auth.uid
+          && request.resource.data.lastMessage is string
+          && request.resource.data.lastMessage.size() <= 1000;
+        allow delete: if false;
+
+        match /messages/{messageId} {
+          allow read: if participant();
+          allow create: if participant()
+            && request.resource.data.senderUid == request.auth.uid
+            && request.resource.data.text is string
+            && request.resource.data.text.size() > 0
+            && request.resource.data.text.size() <= 1000;
+          allow update, delete: if false;
+        }
+      }
     }
 
     // Cualquier otra ruta queda cerrada (Firestore niega por defecto).

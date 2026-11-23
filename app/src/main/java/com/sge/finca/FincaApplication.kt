@@ -9,6 +9,7 @@ import androidx.work.WorkManager
 import com.sge.finca.data.sync.FarmSyncListener
 import com.sge.finca.data.sync.SyncScheduler
 import com.sge.finca.platform.notifications.AlertPushNotifier
+import com.sge.finca.platform.notifications.ChatPushNotifier
 import com.sge.finca.platform.notifications.PushTokenRegistrar
 import com.sge.finca.platform.notifications.ReminderNotifier
 import com.sge.finca.platform.notifications.TransactionPushNotifier
@@ -33,6 +34,9 @@ class FincaApplication : Application(), Configuration.Provider {
     lateinit var alertPushNotifier: AlertPushNotifier
 
     @Inject
+    lateinit var chatPushNotifier: ChatPushNotifier
+
+    @Inject
     lateinit var pushTokenRegistrar: PushTokenRegistrar
 
     @Inject
@@ -52,6 +56,7 @@ class FincaApplication : Application(), Configuration.Provider {
         reminderNotifier.createChannel()
         transactionPushNotifier.createChannel()
         alertPushNotifier.createChannel()
+        chatPushNotifier.createChannel()
         // Guarda el token FCM de este celular cada vez que hay sesión (para los avisos push).
         pushTokenRegistrar.start()
         schedulePhotoCleanup()
